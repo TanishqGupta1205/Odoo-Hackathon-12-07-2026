@@ -110,7 +110,6 @@ function createMonthBuckets(startDate, endDate) {
 
     cursor.setMonth(cursor.getMonth() + 1);
 
-    // Dashboard chart खूप मोठा होऊ नये म्हणून maximum 12 months
     if (buckets.length >= 12) {
       break;
     }
@@ -274,9 +273,10 @@ async function getDashboard(req, res, next) {
         : {}),
     };
 
-    /*
-     * KPI counts
-     */
+    
+
+
+
     const activeVehicleWhere = {
       ...baseVehicleWhere,
       ...(requestedStatus
@@ -583,12 +583,7 @@ async function getDashboard(req, res, next) {
         ? totalDistance / totalFuelConsumed
         : 0;
 
-    /*
-     * PDF formula:
-     * Revenue - (Maintenance + Fuel)
-     * --------------------------------
-     * Acquisition Cost
-     */
+    
     const vehicleROI =
       totalAcquisitionCost > 0
         ? ((totalRevenue -
@@ -602,11 +597,7 @@ async function getDashboard(req, res, next) {
         ? (vehiclesOnTrip / activeVehicles) * 100
         : 0;
 
-    /*
-     * Monthly chart data
-     *
-     * Query dates नसतील तर last 6 months.
-     */
+  
     const chartEndDate = toDate || new Date();
 
     const chartStartDate =
