@@ -3,49 +3,50 @@
 const express = require("express");
 
 const fuelController = require(
-  "../controllers/fuel.controller"
+    "../controllers/fuel.controller"
 );
 
-const authMiddleware = require(
-  "../middlewares/auth.middleware"
+// 🛠️ FIX: Destructure the exact function from your middleware file
+const { verifyToken } = require(
+    "../middlewares/auth.middleware"
 );
 
 const router = express.Router();
 
 router.get(
-  "/summary",
-  authMiddleware,
-  fuelController.getFuelSummary
+    "/summary",
+    verifyToken,
+    fuelController.getFuelSummary
 );
 
 router.get(
-  "/",
-  authMiddleware,
-  fuelController.getAllFuelLogs
+    "/",
+    verifyToken,
+    fuelController.getAllFuelLogs
 );
 
 router.get(
-  "/:id",
-  authMiddleware,
-  fuelController.getFuelLogById
+    "/:id",
+    verifyToken,
+    fuelController.getFuelLogById
 );
 
 router.post(
-  "/",
-  authMiddleware,
-  fuelController.createFuelLog
+    "/",
+    verifyToken,
+    fuelController.createFuelLog
 );
 
 router.patch(
-  "/:id",
-  authMiddleware,
-  fuelController.updateFuelLog
+    "/:id",
+    verifyToken,
+    fuelController.updateFuelLog
 );
 
 router.delete(
-  "/:id",
-  authMiddleware,
-  fuelController.deleteFuelLog
+    "/:id",
+    verifyToken,
+    fuelController.deleteFuelLog
 );
 
 module.exports = router;
