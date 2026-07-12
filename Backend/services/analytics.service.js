@@ -25,9 +25,9 @@ function roundNumber(value, decimalPlaces = 2) {
   const multiplier = 10 ** decimalPlaces;
 
   return (
-    Math.round(
-      (Number(value) + Number.EPSILON) * multiplier
-    ) / multiplier
+      Math.round(
+          (Number(value) + Number.EPSILON) * multiplier
+      ) / multiplier
   );
 }
 
@@ -35,9 +35,9 @@ function normalizeStatus(value) {
   if (!value) return null;
 
   return String(value)
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, "_");
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, "_");
 }
 
 function parseDate(value, endOfDay = false) {
@@ -45,8 +45,8 @@ function parseDate(value, endOfDay = false) {
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const suffix = endOfDay
-      ? "T23:59:59.999Z"
-      : "T00:00:00.000Z";
+        ? "T23:59:59.999Z"
+        : "T00:00:00.000Z";
 
     const date = new Date(`${value}${suffix}`);
 
@@ -80,8 +80,8 @@ function validateDateRange(from, to) {
 
   if (fromDate && toDate && fromDate > toDate) {
     throw createHttpError(
-      400,
-      "From date cannot be greater than to date."
+        400,
+        "From date cannot be greater than to date."
     );
   }
 
@@ -135,14 +135,14 @@ function buildVehicleWhere(filters = {}) {
 
   if (vehicleStatus) {
     const normalizedStatus =
-      normalizeStatus(vehicleStatus);
+        normalizeStatus(vehicleStatus);
 
     if (
-      !VEHICLE_STATUSES.includes(normalizedStatus)
+        !VEHICLE_STATUSES.includes(normalizedStatus)
     ) {
       throw createHttpError(
-        400,
-        "Invalid vehicle status. Use AVAILABLE, ON_TRIP, IN_SHOP or RETIRED."
+          400,
+          "Invalid vehicle status. Use AVAILABLE, ON_TRIP, IN_SHOP or RETIRED."
       );
     }
 
@@ -170,7 +170,7 @@ function calculateTripTotals(trips) {
 
   trips.forEach((trip) => {
     totalDistance += toNumber(
-      trip.actualDistance ??
+        trip.actualDistance ??
         trip.plannedDistance
     );
 
@@ -184,68 +184,68 @@ function calculateTripTotals(trips) {
 }
 
 function calculateAnalytics({
-  totalDistance,
-  totalRevenue,
-  totalFuelLiters,
-  totalFuelCost,
-  totalMaintenanceCost,
-  totalOtherExpenses,
-  totalAcquisitionCost,
-  activeVehicles,
-  vehiclesOnTrip,
-}) {
+                              totalDistance,
+                              totalRevenue,
+                              totalFuelLiters,
+                              totalFuelCost,
+                              totalMaintenanceCost,
+                              totalOtherExpenses,
+                              totalAcquisitionCost,
+                              activeVehicles,
+                              vehiclesOnTrip,
+                            }) {
   const totalOperationalCost =
-    totalFuelCost +
-    totalMaintenanceCost +
-    totalOtherExpenses;
+      totalFuelCost +
+      totalMaintenanceCost +
+      totalOtherExpenses;
 
   const fuelEfficiency =
-    totalFuelLiters > 0
-      ? totalDistance / totalFuelLiters
-      : 0;
+      totalFuelLiters > 0
+          ? totalDistance / totalFuelLiters
+          : 0;
 
   const fleetUtilization =
-    activeVehicles > 0
-      ? (vehiclesOnTrip / activeVehicles) * 100
-      : 0;
+      activeVehicles > 0
+          ? (vehiclesOnTrip / activeVehicles) * 100
+          : 0;
 
   const vehicleROI =
-    totalAcquisitionCost > 0
-      ? ((totalRevenue -
-          (totalFuelCost +
-            totalMaintenanceCost)) /
-          totalAcquisitionCost) *
-        100
-      : 0;
+      totalAcquisitionCost > 0
+          ? ((totalRevenue -
+                  (totalFuelCost +
+                      totalMaintenanceCost)) /
+              totalAcquisitionCost) *
+          100
+          : 0;
 
   const netProfit =
-    totalRevenue - totalOperationalCost;
+      totalRevenue - totalOperationalCost;
 
   return {
     totalDistance: roundNumber(totalDistance),
     totalRevenue: roundNumber(totalRevenue),
     totalFuelLiters: roundNumber(
-      totalFuelLiters
+        totalFuelLiters
     ),
     totalFuelCost: roundNumber(totalFuelCost),
     totalMaintenanceCost: roundNumber(
-      totalMaintenanceCost
+        totalMaintenanceCost
     ),
     totalOtherExpenses: roundNumber(
-      totalOtherExpenses
+        totalOtherExpenses
     ),
     totalOperationalCost: roundNumber(
-      totalOperationalCost
+        totalOperationalCost
     ),
     totalAcquisitionCost: roundNumber(
-      totalAcquisitionCost
+        totalAcquisitionCost
     ),
     fuelEfficiency: roundNumber(
-      fuelEfficiency
+        fuelEfficiency
     ),
     fuelEfficiencyUnit: "km/liter",
     fleetUtilization: roundNumber(
-      fleetUtilization
+        fleetUtilization
     ),
     fleetUtilizationUnit: "%",
     vehicleROI: roundNumber(vehicleROI),
@@ -255,7 +255,7 @@ function calculateAnalytics({
 }
 
 async function getDashboardAnalytics(
-  filters = {}
+    filters = {}
 ) {
   const {
     from,
@@ -268,63 +268,63 @@ async function getDashboardAnalytics(
   } = validateDateRange(from, to);
 
   const dateFilter = createDateFilter(
-    fromDate,
-    toDate
+      fromDate,
+      toDate
   );
 
   const hasDateFilter =
-    Object.keys(dateFilter).length > 0;
+      Object.keys(dateFilter).length > 0;
 
   const vehicleWhere =
-    buildVehicleWhere(filters);
+      buildVehicleWhere(filters);
 
   const vehicleRelationFilter =
-    createVehicleRelationFilter(vehicleWhere);
+      createVehicleRelationFilter(vehicleWhere);
 
   const tripWhere = {
     ...vehicleRelationFilter,
     ...(hasDateFilter
-      ? {
+        ? {
           createdAt: dateFilter,
         }
-      : {}),
+        : {}),
   };
 
   const completedTripWhere = {
     ...vehicleRelationFilter,
     status: "COMPLETED",
     ...(hasDateFilter
-      ? {
+        ? {
           completedAt: dateFilter,
         }
-      : {}),
+        : {}),
   };
 
   const fuelWhere = {
     ...vehicleRelationFilter,
     ...(hasDateFilter
-      ? {
+        ? {
           date: dateFilter,
         }
-      : {}),
+        : {}),
   };
 
   const maintenanceWhere = {
     ...vehicleRelationFilter,
     ...(hasDateFilter
-      ? {
+        ? {
           startDate: dateFilter,
         }
-      : {}),
+        : {}),
   };
 
   const expenseWhere = {
     ...vehicleRelationFilter,
     ...(hasDateFilter
-      ? {
+        ? {
           date: dateFilter,
         }
-      : {}),
+        : {}),
   };
 
   const activeVehicleWhere = {
@@ -531,9 +531,9 @@ async function getDashboardAnalytics(
   ]);
 
   const activeVehicles =
-    vehicleWhere.status === "RETIRED"
-      ? 0
-      : activeVehiclesRaw;
+      vehicleWhere.status === "RETIRED"
+          ? 0
+          : activeVehiclesRaw;
 
   const {
     totalDistance,
@@ -541,23 +541,23 @@ async function getDashboardAnalytics(
   } = calculateTripTotals(completedTrips);
 
   const totalFuelLiters = toNumber(
-    fuelAggregate._sum.liters
+      fuelAggregate._sum.liters
   );
 
   const totalFuelCost = toNumber(
-    fuelAggregate._sum.cost
+      fuelAggregate._sum.cost
   );
 
   const totalMaintenanceCost = toNumber(
-    maintenanceAggregate._sum.cost
+      maintenanceAggregate._sum.cost
   );
 
   const totalOtherExpenses = toNumber(
-    expenseAggregate._sum.amount
+      expenseAggregate._sum.amount
   );
 
   const totalAcquisitionCost = toNumber(
-    acquisitionAggregate._sum.acquisitionCost
+      acquisitionAggregate._sum.acquisitionCost
   );
 
   const analytics = calculateAnalytics({
@@ -576,9 +576,9 @@ async function getDashboardAnalytics(
     filters: {
       vehicleId: filters.vehicleId || null,
       vehicleType:
-        filters.vehicleType || null,
+          filters.vehicleType || null,
       vehicleStatus:
-        vehicleWhere.status || null,
+          vehicleWhere.status || null,
       region: filters.region || null,
       from: from || null,
       to: to || null,
@@ -601,24 +601,24 @@ async function getDashboardAnalytics(
       offDutyDrivers,
       suspendedDrivers,
       fleetUtilization:
-        analytics.fleetUtilization,
+      analytics.fleetUtilization,
     },
 
     analytics: {
       ...analytics,
       averageFuelLiters: roundNumber(
-        fuelAggregate._avg.liters || 0
+          fuelAggregate._avg.liters || 0
       ),
       averageFuelCost: roundNumber(
-        toNumber(fuelAggregate._avg.cost)
+          toNumber(fuelAggregate._avg.cost)
       ),
       averageMaintenanceCost: roundNumber(
-        toNumber(
-          maintenanceAggregate._avg.cost
-        )
+          toNumber(
+              maintenanceAggregate._avg.cost
+          )
       ),
       averageOtherExpense: roundNumber(
-        toNumber(expenseAggregate._avg.amount)
+          toNumber(expenseAggregate._avg.amount)
       ),
     },
 
@@ -630,13 +630,13 @@ async function getDashboardAnalytics(
 }
 
 async function getVehicleAnalytics(
-  vehicleId,
-  filters = {}
+    vehicleId,
+    filters = {}
 ) {
   if (!vehicleId) {
     throw createHttpError(
-      400,
-      "Vehicle ID is required."
+        400,
+        "Vehicle ID is required."
     );
   }
 
@@ -644,41 +644,41 @@ async function getVehicleAnalytics(
     fromDate,
     toDate,
   } = validateDateRange(
-    filters.from,
-    filters.to
+      filters.from,
+      filters.to
   );
 
   const dateFilter = createDateFilter(
-    fromDate,
-    toDate
+      fromDate,
+      toDate
   );
 
   const hasDateFilter =
-    Object.keys(dateFilter).length > 0;
+      Object.keys(dateFilter).length > 0;
 
   const vehicle =
-    await prisma.vehicle.findUnique({
-      where: {
-        id: vehicleId,
-      },
-      select: {
-        id: true,
-        registrationNumber: true,
-        vehicleName: true,
-        model: true,
-        type: true,
-        maximumLoadCapacity: true,
-        odometer: true,
-        acquisitionCost: true,
-        region: true,
-        status: true,
-      },
-    });
+      await prisma.vehicle.findUnique({
+        where: {
+          id: vehicleId,
+        },
+        select: {
+          id: true,
+          registrationNumber: true,
+          vehicleName: true,
+          model: true,
+          type: true,
+          maximumLoadCapacity: true,
+          odometer: true,
+          acquisitionCost: true,
+          region: true,
+          status: true,
+        },
+      });
 
   if (!vehicle) {
     throw createHttpError(
-      404,
-      "Vehicle not found."
+        404,
+        "Vehicle not found."
     );
   }
 
@@ -694,10 +694,10 @@ async function getVehicleAnalytics(
       where: {
         vehicleId,
         ...(hasDateFilter
-          ? {
+            ? {
               createdAt: dateFilter,
             }
-          : {}),
+            : {}),
       },
       _count: {
         _all: true,
@@ -709,10 +709,10 @@ async function getVehicleAnalytics(
         vehicleId,
         status: "COMPLETED",
         ...(hasDateFilter
-          ? {
+            ? {
               completedAt: dateFilter,
             }
-          : {}),
+            : {}),
       },
       select: {
         plannedDistance: true,
@@ -725,10 +725,10 @@ async function getVehicleAnalytics(
       where: {
         vehicleId,
         ...(hasDateFilter
-          ? {
+            ? {
               date: dateFilter,
             }
-          : {}),
+            : {}),
       },
       _count: {
         _all: true,
@@ -743,10 +743,10 @@ async function getVehicleAnalytics(
       where: {
         vehicleId,
         ...(hasDateFilter
-          ? {
+            ? {
               startDate: dateFilter,
             }
-          : {}),
+            : {}),
       },
       _count: {
         _all: true,
@@ -760,10 +760,10 @@ async function getVehicleAnalytics(
       where: {
         vehicleId,
         ...(hasDateFilter
-          ? {
+            ? {
               date: dateFilter,
             }
-          : {}),
+            : {}),
       },
       _count: {
         _all: true,
@@ -780,23 +780,23 @@ async function getVehicleAnalytics(
   } = calculateTripTotals(completedTrips);
 
   const totalFuelLiters = toNumber(
-    fuelAggregate._sum.liters
+      fuelAggregate._sum.liters
   );
 
   const totalFuelCost = toNumber(
-    fuelAggregate._sum.cost
+      fuelAggregate._sum.cost
   );
 
   const totalMaintenanceCost = toNumber(
-    maintenanceAggregate._sum.cost
+      maintenanceAggregate._sum.cost
   );
 
   const totalOtherExpenses = toNumber(
-    expenseAggregate._sum.amount
+      expenseAggregate._sum.amount
   );
 
   const totalAcquisitionCost = toNumber(
-    vehicle.acquisitionCost
+      vehicle.acquisitionCost
   );
 
   const analytics = calculateAnalytics({
@@ -808,16 +808,16 @@ async function getVehicleAnalytics(
     totalOtherExpenses,
     totalAcquisitionCost,
     activeVehicles:
-      vehicle.status === "RETIRED" ? 0 : 1,
+        vehicle.status === "RETIRED" ? 0 : 1,
     vehiclesOnTrip:
-      vehicle.status === "ON_TRIP" ? 1 : 0,
+        vehicle.status === "ON_TRIP" ? 1 : 0,
   });
 
   return {
     vehicle: {
       ...vehicle,
       acquisitionCost: toNumber(
-        vehicle.acquisitionCost
+          vehicle.acquisitionCost
       ),
     },
 
@@ -829,15 +829,15 @@ async function getVehicleAnalytics(
     counts: {
       fuelLogs: fuelAggregate._count._all,
       maintenanceRecords:
-        maintenanceAggregate._count._all,
+      maintenanceAggregate._count._all,
       expenses: expenseAggregate._count._all,
     },
 
     tripStatusDistribution:
-      tripGroups.map((item) => ({
-        status: item.status,
-        count: item._count._all,
-      })),
+        tripGroups.map((item) => ({
+          status: item.status,
+          count: item._count._all,
+        })),
 
     analytics,
   };
@@ -847,41 +847,41 @@ function getMonthKey(dateValue) {
   const date = new Date(dateValue);
 
   return `${date.getUTCFullYear()}-${String(
-    date.getUTCMonth() + 1
+      date.getUTCMonth() + 1
   ).padStart(2, "0")}`;
 }
 
 function getMonthLabel(dateValue) {
   return new Date(dateValue).toLocaleString(
-    "en-US",
-    {
-      month: "short",
-      year: "numeric",
-      timeZone: "UTC",
-    }
+      "en-US",
+      {
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      }
   );
 }
 
 function createMonthlyBuckets(
-  startDate,
-  endDate
+    startDate,
+    endDate
 ) {
   const buckets = [];
 
   const cursor = new Date(
-    Date.UTC(
-      startDate.getUTCFullYear(),
-      startDate.getUTCMonth(),
-      1
-    )
+      Date.UTC(
+          startDate.getUTCFullYear(),
+          startDate.getUTCMonth(),
+          1
+      )
   );
 
   const end = new Date(
-    Date.UTC(
-      endDate.getUTCFullYear(),
-      endDate.getUTCMonth(),
-      1
-    )
+      Date.UTC(
+          endDate.getUTCFullYear(),
+          endDate.getUTCMonth(),
+          1
+      )
   );
 
   while (cursor <= end) {
@@ -896,7 +896,7 @@ function createMonthlyBuckets(
     });
 
     cursor.setUTCMonth(
-      cursor.getUTCMonth() + 1
+        cursor.getUTCMonth() + 1
     );
   }
 
@@ -904,32 +904,32 @@ function createMonthlyBuckets(
 }
 
 async function getMonthlyFinancialAnalytics(
-  filters = {}
+    filters = {}
 ) {
   const requestedDates = validateDateRange(
-    filters.from,
-    filters.to
+      filters.from,
+      filters.to
   );
 
   const endDate =
-    requestedDates.toDate || new Date();
+      requestedDates.toDate || new Date();
 
   let startDate =
-    requestedDates.fromDate ||
-    new Date(
-      Date.UTC(
-        endDate.getUTCFullYear(),
-        endDate.getUTCMonth() - 5,
-        1
-      )
-    );
+      requestedDates.fromDate ||
+      new Date(
+          Date.UTC(
+              endDate.getUTCFullYear(),
+              endDate.getUTCMonth() - 5,
+              1
+          )
+      );
 
   const maximumStartDate = new Date(
-    Date.UTC(
-      endDate.getUTCFullYear(),
-      endDate.getUTCMonth() - 11,
-      1
-    )
+      Date.UTC(
+          endDate.getUTCFullYear(),
+          endDate.getUTCMonth() - 11,
+          1
+      )
   );
 
   if (startDate < maximumStartDate) {
@@ -942,10 +942,10 @@ async function getMonthlyFinancialAnalytics(
   };
 
   const vehicleWhere =
-    buildVehicleWhere(filters);
+      buildVehicleWhere(filters);
 
   const vehicleRelationFilter =
-    createVehicleRelationFilter(vehicleWhere);
+      createVehicleRelationFilter(vehicleWhere);
 
   const [
     fuelLogs,
@@ -1001,26 +1001,26 @@ async function getMonthlyFinancialAnalytics(
   ]);
 
   const buckets = createMonthlyBuckets(
-    startDate,
-    endDate
+      startDate,
+      endDate
   );
 
   const monthMap = new Map(
-    buckets.map((bucket) => [
-      bucket.key,
-      bucket,
-    ])
+      buckets.map((bucket) => [
+        bucket.key,
+        bucket,
+      ])
   );
 
   fuelLogs.forEach((fuelLog) => {
     const bucket = monthMap.get(
-      getMonthKey(fuelLog.date)
+        getMonthKey(fuelLog.date)
     );
 
     if (!bucket) return;
 
     bucket.fuelLiters += toNumber(
-      fuelLog.liters
+        fuelLog.liters
     );
 
     bucket.fuelCost += toNumber(fuelLog.cost);
@@ -1028,25 +1028,25 @@ async function getMonthlyFinancialAnalytics(
 
   maintenanceLogs.forEach((maintenance) => {
     const bucket = monthMap.get(
-      getMonthKey(maintenance.startDate)
+        getMonthKey(maintenance.startDate)
     );
 
     if (!bucket) return;
 
     bucket.maintenanceCost += toNumber(
-      maintenance.cost
+        maintenance.cost
     );
   });
 
   expenses.forEach((expense) => {
     const bucket = monthMap.get(
-      getMonthKey(expense.date)
+        getMonthKey(expense.date)
     );
 
     if (!bucket) return;
 
     bucket.otherExpenses += toNumber(
-      expense.amount
+        expense.amount
     );
   });
 
@@ -1054,7 +1054,7 @@ async function getMonthlyFinancialAnalytics(
     if (!trip.completedAt) return;
 
     const bucket = monthMap.get(
-      getMonthKey(trip.completedAt)
+        getMonthKey(trip.completedAt)
     );
 
     if (!bucket) return;
@@ -1064,28 +1064,28 @@ async function getMonthlyFinancialAnalytics(
 
   return buckets.map((bucket) => {
     const totalOperationalCost =
-      bucket.fuelCost +
-      bucket.maintenanceCost +
-      bucket.otherExpenses;
+        bucket.fuelCost +
+        bucket.maintenanceCost +
+        bucket.otherExpenses;
 
     return {
       month: bucket.month,
       fuelLiters: roundNumber(
-        bucket.fuelLiters
+          bucket.fuelLiters
       ),
       fuelCost: roundNumber(bucket.fuelCost),
       maintenanceCost: roundNumber(
-        bucket.maintenanceCost
+          bucket.maintenanceCost
       ),
       otherExpenses: roundNumber(
-        bucket.otherExpenses
+          bucket.otherExpenses
       ),
       totalOperationalCost: roundNumber(
-        totalOperationalCost
+          totalOperationalCost
       ),
       revenue: roundNumber(bucket.revenue),
       netProfit: roundNumber(
-        bucket.revenue -
+          bucket.revenue -
           totalOperationalCost
       ),
     };
@@ -1093,50 +1093,50 @@ async function getMonthlyFinancialAnalytics(
 }
 
 async function getVehicleCostBreakdown(
-  filters = {}
+    filters = {}
 ) {
   const {
     fromDate,
     toDate,
   } = validateDateRange(
-    filters.from,
-    filters.to
+      filters.from,
+      filters.to
   );
 
   const dateFilter = createDateFilter(
-    fromDate,
-    toDate
+      fromDate,
+      toDate
   );
 
   const hasDateFilter =
-    Object.keys(dateFilter).length > 0;
+      Object.keys(dateFilter).length > 0;
 
   const vehicleWhere =
-    buildVehicleWhere(filters);
+      buildVehicleWhere(filters);
 
   const limit = Math.min(
-    Math.max(
-      Number.parseInt(filters.limit, 10) || 10,
-      1
-    ),
-    100
+      Math.max(
+          Number.parseInt(filters.limit, 10) || 10,
+          1
+      ),
+      100
   );
 
   const vehicles =
-    await prisma.vehicle.findMany({
-      where: vehicleWhere,
-      select: {
-        id: true,
-        registrationNumber: true,
-        vehicleName: true,
-        type: true,
-        status: true,
-        acquisitionCost: true,
-      },
-    });
+      await prisma.vehicle.findMany({
+        where: vehicleWhere,
+        select: {
+          id: true,
+          registrationNumber: true,
+          vehicleName: true,
+          type: true,
+          status: true,
+          acquisitionCost: true,
+        },
+      });
 
   const vehicleIds = vehicles.map(
-    (vehicle) => vehicle.id
+      (vehicle) => vehicle.id
   );
 
   if (vehicleIds.length === 0) {
@@ -1156,10 +1156,10 @@ async function getVehicleCostBreakdown(
           in: vehicleIds,
         },
         ...(hasDateFilter
-          ? {
+            ? {
               date: dateFilter,
             }
-          : {}),
+            : {}),
       },
       _sum: {
         liters: true,
@@ -1174,10 +1174,10 @@ async function getVehicleCostBreakdown(
           in: vehicleIds,
         },
         ...(hasDateFilter
-          ? {
+            ? {
               startDate: dateFilter,
             }
-          : {}),
+            : {}),
       },
       _sum: {
         cost: true,
@@ -1191,10 +1191,10 @@ async function getVehicleCostBreakdown(
           in: vehicleIds,
         },
         ...(hasDateFilter
-          ? {
+            ? {
               date: dateFilter,
             }
-          : {}),
+            : {}),
       },
       _sum: {
         amount: true,
@@ -1208,10 +1208,10 @@ async function getVehicleCostBreakdown(
         },
         status: "COMPLETED",
         ...(hasDateFilter
-          ? {
+            ? {
               completedAt: dateFilter,
             }
-          : {}),
+            : {}),
       },
       select: {
         vehicleId: true,
@@ -1223,40 +1223,40 @@ async function getVehicleCostBreakdown(
   ]);
 
   const fuelMap = new Map(
-    fuelGroups.map((item) => [
-      item.vehicleId,
-      {
-        liters: toNumber(item._sum.liters),
-        cost: toNumber(item._sum.cost),
-      },
-    ])
+      fuelGroups.map((item) => [
+        item.vehicleId,
+        {
+          liters: toNumber(item._sum.liters),
+          cost: toNumber(item._sum.cost),
+        },
+      ])
   );
 
   const maintenanceMap = new Map(
-    maintenanceGroups.map((item) => [
-      item.vehicleId,
-      toNumber(item._sum.cost),
-    ])
+      maintenanceGroups.map((item) => [
+        item.vehicleId,
+        toNumber(item._sum.cost),
+      ])
   );
 
   const expenseMap = new Map(
-    expenseGroups.map((item) => [
-      item.vehicleId,
-      toNumber(item._sum.amount),
-    ])
+      expenseGroups.map((item) => [
+        item.vehicleId,
+        toNumber(item._sum.amount),
+      ])
   );
 
   const tripMap = new Map();
 
   completedTrips.forEach((trip) => {
     const current =
-      tripMap.get(trip.vehicleId) || {
-        distance: 0,
-        revenue: 0,
-      };
+        tripMap.get(trip.vehicleId) || {
+          distance: 0,
+          revenue: 0,
+        };
 
     current.distance += toNumber(
-      trip.actualDistance ??
+        trip.actualDistance ??
         trip.plannedDistance
     );
 
@@ -1266,87 +1266,87 @@ async function getVehicleCostBreakdown(
   });
 
   return vehicles
-    .map((vehicle) => {
-      const fuel = fuelMap.get(vehicle.id) || {
-        liters: 0,
-        cost: 0,
-      };
-
-      const maintenanceCost =
-        maintenanceMap.get(vehicle.id) || 0;
-
-      const otherExpenses =
-        expenseMap.get(vehicle.id) || 0;
-
-      const tripTotals =
-        tripMap.get(vehicle.id) || {
-          distance: 0,
-          revenue: 0,
+      .map((vehicle) => {
+        const fuel = fuelMap.get(vehicle.id) || {
+          liters: 0,
+          cost: 0,
         };
 
-      const operationalCost =
-        fuel.cost +
-        maintenanceCost +
-        otherExpenses;
+        const maintenanceCost =
+            maintenanceMap.get(vehicle.id) || 0;
 
-      const fuelEfficiency =
-        fuel.liters > 0
-          ? tripTotals.distance / fuel.liters
-          : 0;
+        const otherExpenses =
+            expenseMap.get(vehicle.id) || 0;
 
-      const acquisitionCost = toNumber(
-        vehicle.acquisitionCost
-      );
+        const tripTotals =
+            tripMap.get(vehicle.id) || {
+              distance: 0,
+              revenue: 0,
+            };
 
-      const roi =
-        acquisitionCost > 0
-          ? ((tripTotals.revenue -
-              (fuel.cost +
-                maintenanceCost)) /
-              acquisitionCost) *
-            100
-          : 0;
+        const operationalCost =
+            fuel.cost +
+            maintenanceCost +
+            otherExpenses;
 
-      return {
-        vehicle: {
-          ...vehicle,
-          acquisitionCost,
-        },
-        totalDistance: roundNumber(
-          tripTotals.distance
-        ),
-        totalRevenue: roundNumber(
-          tripTotals.revenue
-        ),
-        totalFuelLiters: roundNumber(
-          fuel.liters
-        ),
-        fuelCost: roundNumber(fuel.cost),
-        maintenanceCost: roundNumber(
-          maintenanceCost
-        ),
-        otherExpenses: roundNumber(
-          otherExpenses
-        ),
-        operationalCost: roundNumber(
-          operationalCost
-        ),
-        fuelEfficiency: roundNumber(
-          fuelEfficiency
-        ),
-        vehicleROI: roundNumber(roi),
-        netProfit: roundNumber(
-          tripTotals.revenue -
-            operationalCost
-        ),
-      };
-    })
-    .sort(
-      (first, second) =>
-        second.operationalCost -
-        first.operationalCost
-    )
-    .slice(0, limit);
+        const fuelEfficiency =
+            fuel.liters > 0
+                ? tripTotals.distance / fuel.liters
+                : 0;
+
+        const acquisitionCost = toNumber(
+            vehicle.acquisitionCost
+        );
+
+        const roi =
+            acquisitionCost > 0
+                ? ((tripTotals.revenue -
+                        (fuel.cost +
+                            maintenanceCost)) /
+                    acquisitionCost) *
+                100
+                : 0;
+
+        return {
+          vehicle: {
+            ...vehicle,
+            acquisitionCost,
+          },
+          totalDistance: roundNumber(
+              tripTotals.distance
+          ),
+          totalRevenue: roundNumber(
+              tripTotals.revenue
+          ),
+          totalFuelLiters: roundNumber(
+              fuel.liters
+          ),
+          fuelCost: roundNumber(fuel.cost),
+          maintenanceCost: roundNumber(
+              maintenanceCost
+          ),
+          otherExpenses: roundNumber(
+              otherExpenses
+          ),
+          operationalCost: roundNumber(
+              operationalCost
+          ),
+          fuelEfficiency: roundNumber(
+              fuelEfficiency
+          ),
+          vehicleROI: roundNumber(roi),
+          netProfit: roundNumber(
+              tripTotals.revenue -
+              operationalCost
+          ),
+        };
+      })
+      .sort(
+          (first, second) =>
+              second.operationalCost -
+              first.operationalCost
+      )
+      .slice(0, limit);
 }
 
 module.exports = {
