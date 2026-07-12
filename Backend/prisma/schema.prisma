@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -43,16 +42,22 @@ enum MaintenanceStatus {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         UserRole
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  status    String   @default("Active") // Active, Suspended
+  role_id   String
+  role      Role     @relation(fields: [role_id], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
+model Role {
+  id        String   @id @default(uuid())
+  role_name String   @unique // Fleet Manager, Driver, Safety Officer, etc.
+  users     User[]
+}
 model Vehicle {
   id                   String          @id @default(uuid())
   registrationNumber   String          @unique
