@@ -2,8 +2,6 @@
 
 const { prisma } = require("../config/db");
 
-
-
 const DRIVER_STATUSES = [
   "AVAILABLE",
   "ON_TRIP",
@@ -28,12 +26,12 @@ const ALLOWED_SORT_FIELDS = [
 */
 
 function normalizeStatus(value) {
-  if (!value) return null;
+  if (value === undefined || value === null || String(value).trim() === "") return null;
 
   return String(value)
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, "_");
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, "_");
 }
 
 function parsePositiveInteger(value, defaultValue) {
@@ -48,9 +46,9 @@ function parsePositiveInteger(value, defaultValue) {
 
 function parseSafetyScore(value) {
   if (
-    value === undefined ||
-    value === null ||
-    value === ""
+      value === undefined ||
+      value === null ||
+      value === ""
   ) {
     return undefined;
   }
@@ -67,7 +65,6 @@ function parseSafetyScore(value) {
 function parseDate(value) {
   if (!value) return null;
 
-  
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const date = new Date(`${value}T23:59:59.999Z`);
 
@@ -89,8 +86,8 @@ function parseDate(value) {
 
 function isEmptyString(value) {
   return (
-    typeof value === "string" &&
-    value.trim().length === 0
+      typeof value === "string" &&
+      value.trim().length === 0
   );
 }
 
@@ -106,19 +103,6 @@ function isPrismaNotFoundError(error) {
 |--------------------------------------------------------------------------
 | GET ALL DRIVERS
 |--------------------------------------------------------------------------
-|
-| GET /api/drivers
-|
-| Query examples:
-| ?search=Alex
-| ?status=AVAILABLE
-| ?licenseCategory=LMV
-| ?licenseStatus=valid
-| ?licenseStatus=expired
-| ?licenseStatus=expiring&expiringInDays=30
-| ?page=1&limit=10
-| ?sortBy=name&sortOrder=asc
-|
 */
 
 async function getAllDrivers(req, res, next) {
@@ -134,91 +118,50 @@ async function getAllDrivers(req, res, next) {
     } = req.query;
 
     const page = parsePositiveInteger(req.query.page, 1);
-
-    const requestedLimit = parsePositiveInteger(
-      req.query.limit,
-      10
-    );
-
-    
+    const requestedLimit = parsePositiveInteger(req.query.limit, 10);
     const limit = Math.min(requestedLimit, 100);
-
     const skip = (page - 1) * limit;
 
     const normalizedStatus = normalizeStatus(status);
 
     if (
-      normalizedStatus &&
-      !DRIVER_STATUSES.includes(normalizedStatus)
+        normalizedStatus &&
+        !DRIVER_STATUSES.includes(normalizedStatus)
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid driver status. Use AVAILABLE, ON_TRIP, OFF_DUTY or SUSPENDED.",
+        message: "Invalid driver status. Use AVAILABLE, ON_TRIP, OFF_DUTY or SUSPENDED.",
       });
     }
 
     const normalizedLicenseStatus = licenseStatus
-      ? String(licenseStatus).trim().toLowerCase()
-      : null;
+        ? String(licenseStatus).trim().toLowerCase()
+        : null;
 
-    const allowedLicenseStatuses = [
-      "valid",
-      "expired",
-      "expiring",
-    ];
+    const allowedLicenseStatuses = ["valid", "expired", "expiring"];
 
     if (
-      normalizedLicenseStatus &&
-      !allowedLicenseStatuses.includes(
-        normalizedLicenseStatus
-      )
+        normalizedLicenseStatus &&
+        !allowedLicenseStatuses.includes(normalizedLicenseStatus)
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid license status. Use valid, expired or expiring.",
+        message: "Invalid license status. Use valid, expired or expiring.",
       });
     }
 
-    const safeSortBy = ALLOWED_SORT_FIELDS.includes(
-      sortBy
-    )
-      ? sortBy
-      : "createdAt";
-
-    const safeSortOrder =
-      String(sortOrder).toLowerCase() === "asc"
-        ? "asc"
-        : "desc";
+    const safeSortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : "createdAt";
+    const safeSortOrder = String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc";
 
     const where = {};
 
-    /*
-     * Search by name, license number किंवा contact number.
-     */
     if (search && String(search).trim()) {
       const searchValue = String(search).trim();
 
       where.OR = [
-        {
-          name: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          licenseNumber: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          contactNumber: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
+        { name: { contains: searchValue, mode: "insensitive" } },
+        { licenseNumber: { contains: searchValue, mode: "insensitive" } },
+        { contactNumber: { contains: searchValue, mode: "insensitive" } },
       ];
     }
 
@@ -226,44 +169,27 @@ async function getAllDrivers(req, res, next) {
       where.status = normalizedStatus;
     }
 
-    if (
-      licenseCategory &&
-      String(licenseCategory).trim()
-    ) {
+    if (licenseCategory && String(licenseCategory).trim()) {
       where.licenseCategory = {
         equals: String(licenseCategory).trim(),
         mode: "insensitive",
       };
     }
 
-    /*
-     * License filters.
-     */
     const now = new Date();
 
     if (normalizedLicenseStatus === "valid") {
-      where.licenseExpiryDate = {
-        gt: now,
-      };
+      where.licenseExpiryDate = { gt: now };
     }
 
     if (normalizedLicenseStatus === "expired") {
-      where.licenseExpiryDate = {
-        lte: now,
-      };
+      where.licenseExpiryDate = { lte: now };
     }
 
     if (normalizedLicenseStatus === "expiring") {
-      const days = Math.min(
-        parsePositiveInteger(expiringInDays, 30),
-        365
-      );
-
+      const days = Math.min(parsePositiveInteger(expiringInDays, 30), 365);
       const expiryLimit = new Date();
-
-      expiryLimit.setDate(
-        expiryLimit.getDate() + days
-      );
+      expiryLimit.setDate(expiryLimit.getDate() + days);
 
       where.licenseExpiryDate = {
         gt: now,
@@ -271,72 +197,49 @@ async function getAllDrivers(req, res, next) {
       };
     }
 
-    const [drivers, totalDrivers] =
-      await prisma.$transaction([
-        prisma.driver.findMany({
-          where,
-          skip,
-          take: limit,
+    const [drivers, totalDrivers] = await prisma.$transaction([
+      prisma.driver.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [safeSortBy]: safeSortOrder },
+        select: {
+          id: true,
+          name: true,
+          licenseNumber: true,
+          licenseCategory: true,
+          licenseExpiryDate: true,
+          contactNumber: true,
+          safetyScore: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { trips: true } },
+        },
+      }),
+      prisma.driver.count({ where }),
+    ]);
 
-          orderBy: {
-            [safeSortBy]: safeSortOrder,
-          },
+    const formattedDrivers = drivers.map((driver) => ({
+      id: driver.id,
+      name: driver.name,
+      licenseNumber: driver.licenseNumber,
+      licenseCategory: driver.licenseCategory,
+      licenseExpiryDate: driver.licenseExpiryDate,
+      contactNumber: driver.contactNumber,
+      safetyScore: driver.safetyScore,
+      status: driver.status,
+      isLicenseExpired: driver.licenseExpiryDate <= now,
+      totalTrips: driver._count.trips,
+      createdAt: driver.createdAt,
+      updatedAt: driver.updatedAt,
+    }));
 
-          select: {
-            id: true,
-            name: true,
-            licenseNumber: true,
-            licenseCategory: true,
-            licenseExpiryDate: true,
-            contactNumber: true,
-            safetyScore: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
-
-            _count: {
-              select: {
-                trips: true,
-              },
-            },
-          },
-        }),
-
-        prisma.driver.count({
-          where,
-        }),
-      ]);
-
-    const formattedDrivers = drivers.map(
-      (driver) => ({
-        id: driver.id,
-        name: driver.name,
-        licenseNumber: driver.licenseNumber,
-        licenseCategory: driver.licenseCategory,
-        licenseExpiryDate:
-          driver.licenseExpiryDate,
-        contactNumber: driver.contactNumber,
-        safetyScore: driver.safetyScore,
-        status: driver.status,
-
-        isLicenseExpired:
-          driver.licenseExpiryDate <= now,
-
-        totalTrips: driver._count.trips,
-
-        createdAt: driver.createdAt,
-        updatedAt: driver.updatedAt,
-      })
-    );
-
-    const totalPages = Math.ceil(
-      totalDrivers / limit
-    );
+    const totalPages = Math.ceil(totalDrivers / limit);
 
     return res.status(200).json({
       success: true,
       message: "Drivers fetched successfully",
-
       pagination: {
         currentPage: page,
         limit,
@@ -345,16 +248,12 @@ async function getAllDrivers(req, res, next) {
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,
       },
-
       filters: {
         search: search || null,
         status: normalizedStatus,
-        licenseCategory:
-          licenseCategory || null,
-        licenseStatus:
-          normalizedLicenseStatus,
+        licenseCategory: licenseCategory || null,
+        licenseStatus: normalizedLicenseStatus,
       },
-
       drivers: formattedDrivers,
     });
   } catch (error) {
@@ -362,29 +261,22 @@ async function getAllDrivers(req, res, next) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET AVAILABLE DRIVERS
+|--------------------------------------------------------------------------
+*/
 
-
-async function getAvailableDrivers(
-  req,
-  res,
-  next
-) {
+async function getAvailableDrivers(req, res, next) {
   try {
-    const { licenseCategory, search } =
-      req.query;
+    const { licenseCategory, search } = req.query;
 
     const where = {
       status: "AVAILABLE",
-
-      licenseExpiryDate: {
-        gt: new Date(),
-      },
+      licenseExpiryDate: { gt: new Date() },
     };
 
-    if (
-      licenseCategory &&
-      String(licenseCategory).trim()
-    ) {
+    if (licenseCategory && String(licenseCategory).trim()) {
       where.licenseCategory = {
         equals: String(licenseCategory).trim(),
         mode: "insensitive",
@@ -395,28 +287,14 @@ async function getAvailableDrivers(
       const searchValue = String(search).trim();
 
       where.OR = [
-        {
-          name: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          licenseNumber: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
+        { name: { contains: searchValue, mode: "insensitive" } },
+        { licenseNumber: { contains: searchValue, mode: "insensitive" } },
       ];
     }
 
     const drivers = await prisma.driver.findMany({
       where,
-
-      orderBy: {
-        name: "asc",
-      },
-
+      orderBy: { name: "asc" },
       select: {
         id: true,
         name: true,
@@ -439,58 +317,48 @@ async function getAvailableDrivers(
   }
 }
 
-
+/*
+|--------------------------------------------------------------------------
+| GET DRIVER BY ID
+|--------------------------------------------------------------------------
+*/
 
 async function getDriverById(req, res, next) {
   try {
     const { id } = req.params;
 
-    const driver =
-      await prisma.driver.findUnique({
-        where: {
-          id,
-        },
-
-        include: {
-          trips: {
-            take: 10,
-
-            orderBy: {
-              createdAt: "desc",
-            },
-
-            select: {
-              id: true,
-              source: true,
-              destination: true,
-              cargoWeight: true,
-              plannedDistance: true,
-              actualDistance: true,
-              revenue: true,
-              status: true,
-              dispatchedAt: true,
-              completedAt: true,
-              createdAt: true,
-
-              vehicle: {
-                select: {
-                  id: true,
-                  registrationNumber: true,
-                  vehicleName: true,
-                  type: true,
-                  status: true,
-                },
+    const driver = await prisma.driver.findUnique({
+      where: { id },
+      include: {
+        trips: {
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            source: true,
+            destination: true,
+            cargoWeight: true,
+            plannedDistance: true,
+            actualDistance: true,
+            revenue: true,
+            status: true,
+            dispatchedAt: true,
+            completedAt: true,
+            createdAt: true,
+            vehicle: {
+              select: {
+                id: true,
+                registrationNumber: true,
+                vehicleName: true,
+                type: true,
+                status: true,
               },
             },
           },
-
-          _count: {
-            select: {
-              trips: true,
-            },
-          },
         },
-      });
+        _count: { select: { trips: true } },
+      },
+    });
 
     if (!driver) {
       return res.status(404).json({
@@ -503,25 +371,18 @@ async function getDriverById(req, res, next) {
 
     return res.status(200).json({
       success: true,
-
       driver: {
         id: driver.id,
         name: driver.name,
         licenseNumber: driver.licenseNumber,
-        licenseCategory:
-          driver.licenseCategory,
-        licenseExpiryDate:
-          driver.licenseExpiryDate,
+        licenseCategory: driver.licenseCategory,
+        licenseExpiryDate: driver.licenseExpiryDate,
         contactNumber: driver.contactNumber,
         safetyScore: driver.safetyScore,
         status: driver.status,
-
-        isLicenseExpired:
-          driver.licenseExpiryDate <= now,
-
+        isLicenseExpired: driver.licenseExpiryDate <= now,
         totalTrips: driver._count.trips,
         recentTrips: driver.trips,
-
         createdAt: driver.createdAt,
         updatedAt: driver.updatedAt,
       },
@@ -531,7 +392,11 @@ async function getDriverById(req, res, next) {
   }
 }
 
-
+/*
+|--------------------------------------------------------------------------
+| CREATE DRIVER
+|--------------------------------------------------------------------------
+*/
 
 async function createDriver(req, res, next) {
   try {
@@ -546,127 +411,93 @@ async function createDriver(req, res, next) {
     } = req.body;
 
     if (
-      !name ||
-      !licenseNumber ||
-      !licenseCategory ||
-      !licenseExpiryDate ||
-      !contactNumber
+        !name ||
+        !licenseNumber ||
+        !licenseCategory ||
+        !licenseExpiryDate ||
+        !contactNumber
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Name, license number, license category, license expiry date and contact number are required.",
+        message: "Name, license number, license category, license expiry date and contact number are required.",
       });
     }
 
     if (
-      isEmptyString(name) ||
-      isEmptyString(licenseNumber) ||
-      isEmptyString(licenseCategory) ||
-      isEmptyString(contactNumber)
+        isEmptyString(name) ||
+        isEmptyString(licenseNumber) ||
+        isEmptyString(licenseCategory) ||
+        isEmptyString(contactNumber)
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Required fields cannot be empty.",
+        message: "Required fields cannot be empty.",
       });
     }
 
-    const parsedExpiryDate = parseDate(
-      licenseExpiryDate
-    );
+    const parsedExpiryDate = parseDate(licenseExpiryDate);
 
     if (!parsedExpiryDate) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid license expiry date.",
+        message: "Invalid license expiry date.",
       });
     }
 
-    const parsedSafetyScore =
-      parseSafetyScore(safetyScore);
+    const parsedSafetyScore = parseSafetyScore(safetyScore);
 
     if (parsedSafetyScore === null) {
       return res.status(400).json({
         success: false,
-        message:
-          "Safety score must be a valid number.",
+        message: "Safety score must be a valid number.",
       });
     }
 
     if (
-      parsedSafetyScore !== undefined &&
-      (parsedSafetyScore < 0 ||
-        parsedSafetyScore > 100)
+        parsedSafetyScore !== undefined &&
+        (parsedSafetyScore < 0 || parsedSafetyScore > 100)
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Safety score must be between 0 and 100.",
+        message: "Safety score must be between 0 and 100.",
       });
     }
 
-    const normalizedStatus =
-      normalizeStatus(status) || "AVAILABLE";
+    const normalizedStatus = normalizeStatus(status) || "AVAILABLE";
 
-    if (
-      !DRIVER_STATUSES.includes(
-        normalizedStatus
-      )
-    ) {
+    if (!DRIVER_STATUSES.includes(normalizedStatus)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid driver status. Use AVAILABLE, OFF_DUTY or SUSPENDED.",
+        message: "Invalid driver status. Use AVAILABLE, OFF_DUTY or SUSPENDED.",
       });
     }
 
-    
     if (normalizedStatus === "ON_TRIP") {
       return res.status(400).json({
         success: false,
-        message:
-          "ON_TRIP status cannot be assigned manually. Dispatch a trip to update this status.",
+        message: "ON_TRIP status cannot be assigned manually. Dispatch a trip to update this status.",
       });
     }
 
-    const existingDriver =
-      await prisma.driver.findUnique({
-        where: {
-          licenseNumber:
-            String(licenseNumber).trim(),
-        },
-      });
+    const existingDriver = await prisma.driver.findUnique({
+      where: { licenseNumber: String(licenseNumber).trim() },
+    });
 
     if (existingDriver) {
       return res.status(409).json({
         success: false,
-        message:
-          "A driver with this license number already exists.",
+        message: "A driver with this license number already exists.",
       });
     }
 
     const driver = await prisma.driver.create({
       data: {
         name: String(name).trim(),
-
-        licenseNumber:
-          String(licenseNumber).trim(),
-
-        licenseCategory:
-          String(licenseCategory).trim(),
-
+        licenseNumber: String(licenseNumber).trim(),
+        licenseCategory: String(licenseCategory).trim(),
         licenseExpiryDate: parsedExpiryDate,
-
-        contactNumber:
-          String(contactNumber).trim(),
-
-        safetyScore:
-          parsedSafetyScore === undefined
-            ? 100
-            : parsedSafetyScore,
-
+        contactNumber: String(contactNumber).trim(),
+        safetyScore: parsedSafetyScore === undefined ? 100 : parsedSafetyScore,
         status: normalizedStatus,
       },
     });
@@ -680,21 +511,22 @@ async function createDriver(req, res, next) {
     if (isPrismaUniqueError(error)) {
       return res.status(409).json({
         success: false,
-        message:
-          "A driver with this license number already exists.",
+        message: "A driver with this license number already exists.",
       });
     }
-
     next(error);
   }
 }
 
-
+/*
+|--------------------------------------------------------------------------
+| UPDATE DRIVER
+|--------------------------------------------------------------------------
+*/
 
 async function updateDriver(req, res, next) {
   try {
     const { id } = req.params;
-
     const {
       name,
       licenseNumber,
@@ -705,12 +537,9 @@ async function updateDriver(req, res, next) {
       status,
     } = req.body;
 
-    const existingDriver =
-      await prisma.driver.findUnique({
-        where: {
-          id,
-        },
-      });
+    const existingDriver = await prisma.driver.findUnique({
+      where: { id },
+    });
 
     if (!existingDriver) {
       return res.status(404).json({
@@ -723,140 +552,91 @@ async function updateDriver(req, res, next) {
 
     if (name !== undefined) {
       if (isEmptyString(name)) {
-        return res.status(400).json({
-          success: false,
-          message: "Name cannot be empty.",
-        });
+        return res.status(400).json({ success: false, message: "Name cannot be empty." });
       }
-
       updateData.name = String(name).trim();
     }
 
     if (licenseNumber !== undefined) {
       if (isEmptyString(licenseNumber)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "License number cannot be empty.",
-        });
+        return res.status(400).json({ success: false, message: "License number cannot be empty." });
       }
-
-      updateData.licenseNumber =
-        String(licenseNumber).trim();
+      updateData.licenseNumber = String(licenseNumber).trim();
     }
 
     if (licenseCategory !== undefined) {
       if (isEmptyString(licenseCategory)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "License category cannot be empty.",
-        });
+        return res.status(400).json({ success: false, message: "License category cannot be empty." });
       }
-
-      updateData.licenseCategory =
-        String(licenseCategory).trim();
+      updateData.licenseCategory = String(licenseCategory).trim();
     }
 
     if (contactNumber !== undefined) {
       if (isEmptyString(contactNumber)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Contact number cannot be empty.",
-        });
+        return res.status(400).json({ success: false, message: "Contact number cannot be empty." });
       }
-
-      updateData.contactNumber =
-        String(contactNumber).trim();
+      updateData.contactNumber = String(contactNumber).trim();
     }
 
     if (licenseExpiryDate !== undefined) {
-      const parsedExpiryDate = parseDate(
-        licenseExpiryDate
-      );
-
+      const parsedExpiryDate = parseDate(licenseExpiryDate);
       if (!parsedExpiryDate) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid license expiry date.",
-        });
+        return res.status(400).json({ success: false, message: "Invalid license expiry date." });
       }
-
-      updateData.licenseExpiryDate =
-        parsedExpiryDate;
+      updateData.licenseExpiryDate = parsedExpiryDate;
     }
 
     if (safetyScore !== undefined) {
-      const parsedSafetyScore =
-        parseSafetyScore(safetyScore);
-
+      const parsedSafetyScore = parseSafetyScore(safetyScore);
       if (
-        parsedSafetyScore === null ||
-        parsedSafetyScore < 0 ||
-        parsedSafetyScore > 100
+          parsedSafetyScore === null ||
+          parsedSafetyScore < 0 ||
+          parsedSafetyScore > 100
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Safety score must be between 0 and 100.",
+          message: "Safety score must be between 0 and 100.",
         });
       }
-
-      updateData.safetyScore =
-        parsedSafetyScore;
+      updateData.safetyScore = parsedSafetyScore;
     }
 
     if (status !== undefined) {
-      const normalizedStatus =
-        normalizeStatus(status);
+      const normalizedStatus = normalizeStatus(status);
 
-      if (
-        !DRIVER_STATUSES.includes(
-          normalizedStatus
-        )
-      ) {
+      if (!normalizedStatus || !DRIVER_STATUSES.includes(normalizedStatus)) {
         return res.status(400).json({
           success: false,
-          message:
-            "Invalid driver status. Use AVAILABLE, ON_TRIP, OFF_DUTY or SUSPENDED.",
+          message: "Invalid driver status. Use AVAILABLE, ON_TRIP, OFF_DUTY or SUSPENDED.",
         });
       }
 
       if (
-        normalizedStatus === "ON_TRIP" &&
-        existingDriver.status !== "ON_TRIP"
+          normalizedStatus === "ON_TRIP" &&
+          existingDriver.status !== "ON_TRIP"
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "ON_TRIP status cannot be assigned manually.",
+          message: "ON_TRIP status cannot be assigned manually.",
         });
       }
 
-      
       if (
-        existingDriver.status === "ON_TRIP" &&
-        normalizedStatus !== "ON_TRIP"
+          existingDriver.status === "ON_TRIP" &&
+          normalizedStatus !== "ON_TRIP"
       ) {
-        const activeTrip =
-          await prisma.trip.findFirst({
-            where: {
-              driverId: id,
-              status: "DISPATCHED",
-            },
-
-            select: {
-              id: true,
-            },
-          });
+        const activeTrip = await prisma.trip.findFirst({
+          where: {
+            driverId: id,
+            status: "DISPATCHED",
+          },
+          select: { id: true },
+        });
 
         if (activeTrip) {
           return res.status(409).json({
             success: false,
-            message:
-              "Driver is assigned to an active trip. Complete or cancel the trip before changing driver status.",
+            message: "Driver is assigned to an active trip. Complete or cancel the trip before changing driver status.",
           });
         }
       }
@@ -867,19 +647,14 @@ async function updateDriver(req, res, next) {
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "Provide at least one field to update.",
+        message: "Provide at least one field to update.",
       });
     }
 
-    const updatedDriver =
-      await prisma.driver.update({
-        where: {
-          id,
-        },
-
-        data: updateData,
-      });
+    const updatedDriver = await prisma.driver.update({
+      where: { id },
+      data: updateData,
+    });
 
     return res.status(200).json({
       success: true,
@@ -890,34 +665,32 @@ async function updateDriver(req, res, next) {
     if (isPrismaUniqueError(error)) {
       return res.status(409).json({
         success: false,
-        message:
-          "A driver with this license number already exists.",
+        message: "A driver with this license number already exists.",
       });
     }
-
     if (isPrismaNotFoundError(error)) {
       return res.status(404).json({
         success: false,
         message: "Driver not found",
       });
     }
-
     next(error);
   }
 }
 
-
+/*
+|--------------------------------------------------------------------------
+| SUSPEND DRIVER
+|--------------------------------------------------------------------------
+*/
 
 async function suspendDriver(req, res, next) {
   try {
     const { id } = req.params;
 
-    const driver =
-      await prisma.driver.findUnique({
-        where: {
-          id,
-        },
-      });
+    const driver = await prisma.driver.findUnique({
+      where: { id },
+    });
 
     if (!driver) {
       return res.status(404).json({
@@ -927,42 +700,30 @@ async function suspendDriver(req, res, next) {
     }
 
     if (driver.status === "ON_TRIP") {
-      const activeTrip =
-        await prisma.trip.findFirst({
-          where: {
-            driverId: id,
-            status: "DISPATCHED",
-          },
-
-          select: {
-            id: true,
-          },
-        });
+      const activeTrip = await prisma.trip.findFirst({
+        where: {
+          driverId: id,
+          status: "DISPATCHED",
+        },
+        select: { id: true },
+      });
 
       if (activeTrip) {
         return res.status(409).json({
           success: false,
-          message:
-            "Driver is currently on an active trip. Complete or cancel the trip before suspension.",
+          message: "Driver is currently on an active trip. Complete or cancel the trip before suspension.",
         });
       }
     }
 
-    const suspendedDriver =
-      await prisma.driver.update({
-        where: {
-          id,
-        },
-
-        data: {
-          status: "SUSPENDED",
-        },
-      });
+    const suspendedDriver = await prisma.driver.update({
+      where: { id },
+      data: { status: "SUSPENDED" },
+    });
 
     return res.status(200).json({
       success: true,
-      message:
-        "Driver suspended successfully",
+      message: "Driver suspended successfully",
       driver: suspendedDriver,
     });
   } catch (error) {
@@ -970,18 +731,19 @@ async function suspendDriver(req, res, next) {
   }
 }
 
-
+/*
+|--------------------------------------------------------------------------
+| RESTORE DRIVER
+|--------------------------------------------------------------------------
+*/
 
 async function restoreDriver(req, res, next) {
   try {
     const { id } = req.params;
 
-    const driver =
-      await prisma.driver.findUnique({
-        where: {
-          id,
-        },
-      });
+    const driver = await prisma.driver.findUnique({
+      where: { id },
+    });
 
     if (!driver) {
       return res.status(404).json({
@@ -990,31 +752,21 @@ async function restoreDriver(req, res, next) {
       });
     }
 
-    if (
-      driver.licenseExpiryDate <= new Date()
-    ) {
+    if (driver.licenseExpiryDate <= new Date()) {
       return res.status(400).json({
         success: false,
-        message:
-          "Driver license has expired. Update the license expiry date before restoring the driver.",
+        message: "Driver license has expired. Update the license expiry date before restoring the driver.",
       });
     }
 
-    const restoredDriver =
-      await prisma.driver.update({
-        where: {
-          id,
-        },
-
-        data: {
-          status: "AVAILABLE",
-        },
-      });
+    const restoredDriver = await prisma.driver.update({
+      where: { id },
+      data: { status: "AVAILABLE" },
+    });
 
     return res.status(200).json({
       success: true,
-      message:
-        "Driver restored successfully",
+      message: "Driver restored successfully",
       driver: restoredDriver,
     });
   } catch (error) {
@@ -1022,30 +774,25 @@ async function restoreDriver(req, res, next) {
   }
 }
 
-
+/*
+|--------------------------------------------------------------------------
+| DELETE DRIVER
+|--------------------------------------------------------------------------
+*/
 
 async function deleteDriver(req, res, next) {
   try {
     const { id } = req.params;
 
-    const driver =
-      await prisma.driver.findUnique({
-        where: {
-          id,
-        },
-
-        select: {
-          id: true,
-          name: true,
-          status: true,
-
-          _count: {
-            select: {
-              trips: true,
-            },
-          },
-        },
-      });
+    const driver = await prisma.driver.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        _count: { select: { trips: true } },
+      },
+    });
 
     if (!driver) {
       return res.status(404).json({
@@ -1057,23 +804,19 @@ async function deleteDriver(req, res, next) {
     if (driver.status === "ON_TRIP") {
       return res.status(409).json({
         success: false,
-        message:
-          "Driver is currently on a trip and cannot be deleted.",
+        message: "Driver is currently on a trip and cannot be deleted.",
       });
     }
 
     if (driver._count.trips > 0) {
       return res.status(409).json({
         success: false,
-        message:
-          "Driver has trip history and cannot be deleted. Set the driver status to OFF_DUTY or SUSPENDED instead.",
+        message: "Driver has trip history and cannot be deleted. Set the driver status to OFF_DUTY or SUSPENDED instead.",
       });
     }
 
     await prisma.driver.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     return res.status(200).json({
@@ -1087,16 +830,9 @@ async function deleteDriver(req, res, next) {
         message: "Driver not found",
       });
     }
-
     next(error);
   }
 }
-
-/*
-|--------------------------------------------------------------------------
-| EXPORTS
-|--------------------------------------------------------------------------
-*/
 
 module.exports = {
   getAllDrivers,

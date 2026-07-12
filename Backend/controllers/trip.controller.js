@@ -1,3 +1,5 @@
+// controllers/trip.controller.js
+
 const { prisma } = require("../config/db");
 
 const TRIP_STATUSES = [
@@ -29,9 +31,9 @@ function normalizeStatus(value) {
   if (!value) return null;
 
   return String(value)
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, "_");
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, "_");
 }
 
 function parsePositiveInteger(value, defaultValue) {
@@ -46,9 +48,9 @@ function parsePositiveInteger(value, defaultValue) {
 
 function parsePositiveNumber(value) {
   if (
-    value === undefined ||
-    value === null ||
-    value === ""
+      value === undefined ||
+      value === null ||
+      value === ""
   ) {
     return null;
   }
@@ -64,9 +66,9 @@ function parsePositiveNumber(value) {
 
 function parseNonNegativeNumber(value) {
   if (
-    value === undefined ||
-    value === null ||
-    value === ""
+      value === undefined ||
+      value === null ||
+      value === ""
   ) {
     return null;
   }
@@ -85,8 +87,8 @@ function parseDate(value, endOfDay = false) {
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const suffix = endOfDay
-      ? "T23:59:59.999Z"
-      : "T00:00:00.000Z";
+        ? "T23:59:59.999Z"
+        : "T00:00:00.000Z";
 
     const date = new Date(`${value}${suffix}`);
 
@@ -119,34 +121,28 @@ function formatTrip(trip) {
 
   return {
     ...trip,
-
     revenue: decimalToNumber(trip.revenue),
-
     vehicle: trip.vehicle
-      ? {
+        ? {
           ...trip.vehicle,
           acquisitionCost:
-            trip.vehicle.acquisitionCost !== undefined
-              ? decimalToNumber(
-                  trip.vehicle.acquisitionCost
-                )
-              : undefined,
+              trip.vehicle.acquisitionCost !== undefined
+                  ? decimalToNumber(trip.vehicle.acquisitionCost)
+                  : undefined,
         }
-      : undefined,
-
+        : undefined,
     fuelLogs: Array.isArray(trip.fuelLogs)
-      ? trip.fuelLogs.map((fuelLog) => ({
+        ? trip.fuelLogs.map((fuelLog) => ({
           ...fuelLog,
           cost: decimalToNumber(fuelLog.cost),
         }))
-      : undefined,
-
+        : undefined,
     expenses: Array.isArray(trip.expenses)
-      ? trip.expenses.map((expense) => ({
+        ? trip.expenses.map((expense) => ({
           ...expense,
           amount: decimalToNumber(expense.amount),
         }))
-      : undefined,
+        : undefined,
   };
 }
 
@@ -155,22 +151,17 @@ function isPrismaNotFoundError(error) {
 }
 
 async function validateAssignment(
-  database,
-  vehicleId,
-  driverId,
-  cargoWeight
+    database,
+    vehicleId,
+    driverId,
+    cargoWeight
 ) {
   const [vehicle, driver] = await Promise.all([
     database.vehicle.findUnique({
-      where: {
-        id: vehicleId,
-      },
+      where: { id: vehicleId },
     }),
-
     database.driver.findUnique({
-      where: {
-        id: driverId,
-      },
+      where: { id: driverId },
     }),
   ]);
 
@@ -184,41 +175,43 @@ async function validateAssignment(
 
   if (vehicle.status !== "AVAILABLE") {
     throw createHttpError(
-      409,
-      `Vehicle is not available. Current status: ${vehicle.status}`
+        409,
+        `Vehicle is not available. Current status: ${vehicle.status}`
     );
   }
 
   if (driver.status !== "AVAILABLE") {
     throw createHttpError(
-      409,
-      `Driver is not available. Current status: ${driver.status}`
+        409,
+        `Driver is not available. Current status: ${driver.status}`
     );
   }
 
   if (driver.licenseExpiryDate <= new Date()) {
     throw createHttpError(
-      409,
-      "Driver license has expired."
+        409,
+        "Driver license has expired."
     );
   }
 
   if (
-    Number(cargoWeight) >
-    Number(vehicle.maximumLoadCapacity)
+      Number(cargoWeight) >
+      Number(vehicle.maximumLoadCapacity)
   ) {
     throw createHttpError(
-      400,
-      `Cargo weight cannot exceed vehicle capacity of ${vehicle.maximumLoadCapacity} kg.`
+        400,
+        `Cargo weight cannot exceed vehicle capacity of ${vehicle.maximumLoadCapacity} kg.`
     );
   }
 
-  return {
-    vehicle,
-    driver,
-  };
+  return { vehicle, driver };
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET ALL TRIPS
+|--------------------------------------------------------------------------
+*/
 async function getAllTrips(req, res, next) {
   try {
     const {
@@ -232,42 +225,25 @@ async function getAllTrips(req, res, next) {
       sortOrder = "desc",
     } = req.query;
 
-    const page = parsePositiveInteger(
-      req.query.page,
-      1
-    );
-
-    const requestedLimit = parsePositiveInteger(
-      req.query.limit,
-      10
-    );
-
+    const page = parsePositiveInteger(req.query.page, 1);
+    const requestedLimit = parsePositiveInteger(req.query.limit, 10);
     const limit = Math.min(requestedLimit, 100);
     const skip = (page - 1) * limit;
 
     const normalizedStatus = normalizeStatus(status);
 
     if (
-      normalizedStatus &&
-      !TRIP_STATUSES.includes(normalizedStatus)
+        normalizedStatus &&
+        !TRIP_STATUSES.includes(normalizedStatus)
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid trip status. Use DRAFT, DISPATCHED, COMPLETED or CANCELLED.",
+        message: "Invalid trip status. Use DRAFT, DISPATCHED, COMPLETED or CANCELLED.",
       });
     }
 
-    const safeSortBy = ALLOWED_SORT_FIELDS.includes(
-      sortBy
-    )
-      ? sortBy
-      : "createdAt";
-
-    const safeSortOrder =
-      String(sortOrder).toLowerCase() === "asc"
-        ? "asc"
-        : "desc";
+    const safeSortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : "createdAt";
+    const safeSortOrder = String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc";
 
     const where = {};
 
@@ -287,48 +263,11 @@ async function getAllTrips(req, res, next) {
       const searchValue = String(search).trim();
 
       where.OR = [
-        {
-          source: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          destination: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          vehicle: {
-            is: {
-              registrationNumber: {
-                contains: searchValue,
-                mode: "insensitive",
-              },
-            },
-          },
-        },
-        {
-          vehicle: {
-            is: {
-              vehicleName: {
-                contains: searchValue,
-                mode: "insensitive",
-              },
-            },
-          },
-        },
-        {
-          driver: {
-            is: {
-              name: {
-                contains: searchValue,
-                mode: "insensitive",
-              },
-            },
-          },
-        },
+        { source: { contains: searchValue, mode: "insensitive" } },
+        { destination: { contains: searchValue, mode: "insensitive" } },
+        { vehicle: { is: { registrationNumber: { contains: searchValue, mode: "insensitive" } } } },
+        { vehicle: { is: { vehicleName: { contains: searchValue, mode: "insensitive" } } } },
+        { driver: { is: { name: { contains: searchValue, mode: "insensitive" } } } },
       ];
     }
 
@@ -336,91 +275,63 @@ async function getAllTrips(req, res, next) {
     const toDate = parseDate(to, true);
 
     if (from && !fromDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid from date.",
-      });
+      return res.status(400).json({ success: false, message: "Invalid from date." });
     }
 
     if (to && !toDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid to date.",
-      });
+      return res.status(400).json({ success: false, message: "Invalid to date." });
     }
 
     if (fromDate && toDate && fromDate > toDate) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "From date cannot be greater than to date.",
-      });
+      return res.status(400).json({ success: false, message: "From date cannot be greater than to date." });
     }
 
     if (fromDate || toDate) {
       where.createdAt = {};
-
-      if (fromDate) {
-        where.createdAt.gte = fromDate;
-      }
-
-      if (toDate) {
-        where.createdAt.lte = toDate;
-      }
+      if (fromDate) where.createdAt.gte = fromDate;
+      if (toDate) where.createdAt.lte = toDate;
     }
 
-    const [trips, totalTrips] =
-      await prisma.$transaction([
-        prisma.trip.findMany({
-          where,
-          skip,
-          take: limit,
-
-          orderBy: {
-            [safeSortBy]: safeSortOrder,
-          },
-
-          include: {
-            vehicle: {
-              select: {
-                id: true,
-                registrationNumber: true,
-                vehicleName: true,
-                model: true,
-                type: true,
-                maximumLoadCapacity: true,
-                odometer: true,
-                status: true,
-              },
-            },
-
-            driver: {
-              select: {
-                id: true,
-                name: true,
-                licenseNumber: true,
-                licenseCategory: true,
-                licenseExpiryDate: true,
-                safetyScore: true,
-                status: true,
-              },
+    const [trips, totalTrips] = await prisma.$transaction([
+      prisma.trip.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [safeSortBy]: safeSortOrder },
+        include: {
+          vehicle: {
+            select: {
+              id: true,
+              registrationNumber: true,
+              vehicleName: true,
+              model: true,
+              type: true,
+              maximumLoadCapacity: true,
+              odometer: true,
+              status: true,
             },
           },
-        }),
+          driver: {
+            select: {
+              id: true,
+              name: true,
+              licenseNumber: true,
+              licenseCategory: true,
+              licenseExpiryDate: true,
+              safetyScore: true,
+              status: true,
+            },
+          },
+        },
+      }),
+      prisma.trip.count({ where }),
+    ]);
 
-        prisma.trip.count({
-          where,
-        }),
-      ]);
-
-    const totalPages = Math.ceil(
-      totalTrips / limit
-    );
+    const totalPages = Math.ceil(totalTrips / limit);
 
     return res.status(200).json({
       success: true,
       message: "Trips fetched successfully",
-
       pagination: {
         currentPage: page,
         limit,
@@ -429,7 +340,6 @@ async function getAllTrips(req, res, next) {
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,
       },
-
       trips: trips.map(formatTrip),
     });
   } catch (error) {
@@ -437,15 +347,17 @@ async function getAllTrips(req, res, next) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| GET TRIP BY ID
+|--------------------------------------------------------------------------
+*/
 async function getTripById(req, res, next) {
   try {
     const { id } = req.params;
 
     const trip = await prisma.trip.findUnique({
-      where: {
-        id,
-      },
-
+      where: { id },
       include: {
         vehicle: {
           select: {
@@ -461,7 +373,6 @@ async function getTripById(req, res, next) {
             status: true,
           },
         },
-
         driver: {
           select: {
             id: true,
@@ -474,26 +385,13 @@ async function getTripById(req, res, next) {
             status: true,
           },
         },
-
-        fuelLogs: {
-          orderBy: {
-            date: "desc",
-          },
-        },
-
-        expenses: {
-          orderBy: {
-            date: "desc",
-          },
-        },
+        fuelLogs: { orderBy: { date: "desc" } },
+        expenses: { orderBy: { date: "desc" } },
       },
     });
 
     if (!trip) {
-      return res.status(404).json({
-        success: false,
-        message: "Trip not found",
-      });
+      return res.status(404).json({ success: false, message: "Trip not found" });
     }
 
     return res.status(200).json({
@@ -505,6 +403,11 @@ async function getTripById(req, res, next) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| CREATE TRIP
+|--------------------------------------------------------------------------
+*/
 async function createTrip(req, res, next) {
   try {
     const {
@@ -518,73 +421,56 @@ async function createTrip(req, res, next) {
     } = req.body;
 
     if (
-      !source ||
-      !destination ||
-      !vehicleId ||
-      !driverId ||
-      cargoWeight === undefined ||
-      plannedDistance === undefined
+        !source ||
+        !destination ||
+        !vehicleId ||
+        !driverId ||
+        cargoWeight === undefined ||
+        plannedDistance === undefined
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Source, destination, vehicle ID, driver ID, cargo weight and planned distance are required.",
+        message: "Source, destination, vehicle ID, driver ID, cargo weight and planned distance are required.",
       });
     }
 
     if (
-      !String(source).trim() ||
-      !String(destination).trim()
+        !String(source).trim() ||
+        !String(destination).trim()
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Source and destination cannot be empty.",
+        message: "Source and destination cannot be empty.",
       });
     }
 
-    const parsedCargoWeight =
-      parsePositiveNumber(cargoWeight);
-
-    const parsedPlannedDistance =
-      parsePositiveNumber(plannedDistance);
+    const parsedCargoWeight = parsePositiveNumber(cargoWeight);
+    const parsedPlannedDistance = parsePositiveNumber(plannedDistance);
 
     if (parsedCargoWeight === null) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Cargo weight must be greater than zero.",
-      });
+      return res.status(400).json({ success: false, message: "Cargo weight must be greater than zero." });
     }
 
     if (parsedPlannedDistance === null) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Planned distance must be greater than zero.",
-      });
+      return res.status(400).json({ success: false, message: "Planned distance must be greater than zero." });
     }
 
     let parsedRevenue = null;
-
     if (revenue !== undefined && revenue !== null) {
-      parsedRevenue =
-        parseNonNegativeNumber(revenue);
-
+      parsedRevenue = parseNonNegativeNumber(revenue);
       if (parsedRevenue === null) {
         return res.status(400).json({
           success: false,
-          message:
-            "Revenue must be a valid non-negative number.",
+          message: "Revenue must be a valid non-negative number.",
         });
       }
     }
 
     const { vehicle } = await validateAssignment(
-      prisma,
-      vehicleId,
-      driverId,
-      parsedCargoWeight
+        prisma,
+        vehicleId,
+        driverId,
+        parsedCargoWeight
     );
 
     const trip = await prisma.trip.create({
@@ -594,18 +480,11 @@ async function createTrip(req, res, next) {
         vehicleId,
         driverId,
         cargoWeight: parsedCargoWeight,
-        plannedDistance:
-          parsedPlannedDistance,
-        revenue:
-          parsedRevenue === null
-            ? null
-            : parsedRevenue.toFixed(2),
-        initialOdometer: Number(
-          vehicle.odometer
-        ),
+        plannedDistance: parsedPlannedDistance,
+        revenue: parsedRevenue === null ? null : parsedRevenue.toFixed(2),
+        initialOdometer: Number(vehicle.odometer),
         status: "DRAFT",
       },
-
       include: {
         vehicle: true,
         driver: true,
@@ -622,29 +501,27 @@ async function createTrip(req, res, next) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| UPDATE TRIP
+|--------------------------------------------------------------------------
+*/
 async function updateTrip(req, res, next) {
   try {
     const { id } = req.params;
 
-    const existingTrip =
-      await prisma.trip.findUnique({
-        where: {
-          id,
-        },
-      });
+    const existingTrip = await prisma.trip.findUnique({
+      where: { id },
+    });
 
     if (!existingTrip) {
-      return res.status(404).json({
-        success: false,
-        message: "Trip not found",
-      });
+      return res.status(404).json({ success: false, message: "Trip not found" });
     }
 
     if (existingTrip.status !== "DRAFT") {
       return res.status(409).json({
         success: false,
-        message:
-          "Only draft trips can be updated.",
+        message: "Only draft trips can be updated.",
       });
     }
 
@@ -658,82 +535,51 @@ async function updateTrip(req, res, next) {
       revenue,
     } = req.body;
 
-    const finalVehicleId =
-      vehicleId || existingTrip.vehicleId;
-
-    const finalDriverId =
-      driverId || existingTrip.driverId;
-
-    let finalCargoWeight =
-      existingTrip.cargoWeight;
-
-    let finalPlannedDistance =
-      existingTrip.plannedDistance;
+    const finalVehicleId = vehicleId || existingTrip.vehicleId;
+    const finalDriverId = driverId || existingTrip.driverId;
+    let finalCargoWeight = existingTrip.cargoWeight;
+    let finalPlannedDistance = existingTrip.plannedDistance;
 
     if (cargoWeight !== undefined) {
-      finalCargoWeight =
-        parsePositiveNumber(cargoWeight);
-
+      finalCargoWeight = parsePositiveNumber(cargoWeight);
       if (finalCargoWeight === null) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Cargo weight must be greater than zero.",
-        });
+        return res.status(400).json({ success: false, message: "Cargo weight must be greater than zero." });
       }
     }
 
     if (plannedDistance !== undefined) {
-      finalPlannedDistance =
-        parsePositiveNumber(plannedDistance);
-
+      finalPlannedDistance = parsePositiveNumber(plannedDistance);
       if (finalPlannedDistance === null) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Planned distance must be greater than zero.",
-        });
+        return res.status(400).json({ success: false, message: "Planned distance must be greater than zero." });
       }
     }
 
     const { vehicle } = await validateAssignment(
-      prisma,
-      finalVehicleId,
-      finalDriverId,
-      finalCargoWeight
+        prisma,
+        finalVehicleId,
+        finalDriverId,
+        finalCargoWeight
     );
 
     const updateData = {};
 
     if (source !== undefined) {
       if (!String(source).trim()) {
-        return res.status(400).json({
-          success: false,
-          message: "Source cannot be empty.",
-        });
+        return res.status(400).json({ success: false, message: "Source cannot be empty." });
       }
-
       updateData.source = String(source).trim();
     }
 
     if (destination !== undefined) {
       if (!String(destination).trim()) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Destination cannot be empty.",
-        });
+        return res.status(400).json({ success: false, message: "Destination cannot be empty." });
       }
-
-      updateData.destination =
-        String(destination).trim();
+      updateData.destination = String(destination).trim();
     }
 
     if (vehicleId !== undefined) {
       updateData.vehicleId = finalVehicleId;
-      updateData.initialOdometer = Number(
-        vehicle.odometer
-      );
+      updateData.initialOdometer = Number(vehicle.odometer);
     }
 
     if (driverId !== undefined) {
@@ -741,56 +587,43 @@ async function updateTrip(req, res, next) {
     }
 
     if (cargoWeight !== undefined) {
-      updateData.cargoWeight =
-        finalCargoWeight;
+      updateData.cargoWeight = finalCargoWeight;
     }
 
     if (plannedDistance !== undefined) {
-      updateData.plannedDistance =
-        finalPlannedDistance;
+      updateData.plannedDistance = finalPlannedDistance;
     }
 
     if (revenue !== undefined) {
       if (revenue === null || revenue === "") {
         updateData.revenue = null;
       } else {
-        const parsedRevenue =
-          parseNonNegativeNumber(revenue);
-
+        const parsedRevenue = parseNonNegativeNumber(revenue);
         if (parsedRevenue === null) {
           return res.status(400).json({
             success: false,
-            message:
-              "Revenue must be a valid non-negative number.",
+            message: "Revenue must be a valid non-negative number.",
           });
         }
-
-        updateData.revenue =
-          parsedRevenue.toFixed(2);
+        updateData.revenue = parsedRevenue.toFixed(2);
       }
     }
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "Provide at least one field to update.",
+        message: "Provide at least one field to update.",
       });
     }
 
-    const updatedTrip =
-      await prisma.trip.update({
-        where: {
-          id,
-        },
-
-        data: updateData,
-
-        include: {
-          vehicle: true,
-          driver: true,
-        },
-      });
+    const updatedTrip = await prisma.trip.update({
+      where: { id },
+      data: updateData,
+      include: {
+        vehicle: true,
+        driver: true,
+      },
+    });
 
     return res.status(200).json({
       success: true,
@@ -799,168 +632,85 @@ async function updateTrip(req, res, next) {
     });
   } catch (error) {
     if (isPrismaNotFoundError(error)) {
-      return res.status(404).json({
-        success: false,
-        message: "Trip not found",
-      });
+      return res.status(404).json({ success: false, message: "Trip not found" });
     }
-
     next(error);
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| DISPATCH TRIP
+|--------------------------------------------------------------------------
+*/
 async function dispatchTrip(req, res, next) {
+  const { id } = req.params;
   try {
-    const dispatchedTrip =
-      await prisma.$transaction(
+    const dispatchTime = new Date();
+
+    // 1. Resolve asset operations safely within execution window
+    await prisma.$transaction(
         async (transaction) => {
-          const trip =
-            await transaction.trip.findUnique({
-              where: {
-                id: req.params.id,
-              },
+          const trip = await transaction.trip.findUnique({
+            where: { id },
+            include: { vehicle: true, driver: true },
+          });
 
-              include: {
-                vehicle: true,
-                driver: true,
-              },
-            });
+          if (!trip) throw createHttpError(404, "Trip not found");
+          if (trip.status !== "DRAFT") throw createHttpError(409, "Only draft trips can be dispatched.");
 
-          if (!trip) {
-            throw createHttpError(
-              404,
-              "Trip not found"
-            );
+          if (Number(trip.cargoWeight) > Number(trip.vehicle.maximumLoadCapacity)) {
+            throw createHttpError(400, `Cargo weight cannot exceed vehicle capacity of ${trip.vehicle.maximumLoadCapacity} kg.`);
+          }
+          if (trip.vehicle.status !== "AVAILABLE") {
+            throw createHttpError(409, `Vehicle is not available. Current status: ${trip.vehicle.status}`);
+          }
+          if (trip.driver.status !== "AVAILABLE") {
+            throw createHttpError(409, `Driver is not available. Current status: ${trip.driver.status}`);
+          }
+          if (trip.driver.licenseExpiryDate <= dispatchTime) {
+            throw createHttpError(409, "Driver license has expired.");
           }
 
-          if (trip.status !== "DRAFT") {
-            throw createHttpError(
-              409,
-              "Only draft trips can be dispatched."
-            );
-          }
-
-          if (
-            Number(trip.cargoWeight) >
-            Number(
-              trip.vehicle.maximumLoadCapacity
-            )
-          ) {
-            throw createHttpError(
-              400,
-              `Cargo weight cannot exceed vehicle capacity of ${trip.vehicle.maximumLoadCapacity} kg.`
-            );
-          }
-
-          if (
-            trip.vehicle.status !== "AVAILABLE"
-          ) {
-            throw createHttpError(
-              409,
-              `Vehicle is not available. Current status: ${trip.vehicle.status}`
-            );
-          }
-
-          if (
-            trip.driver.status !== "AVAILABLE"
-          ) {
-            throw createHttpError(
-              409,
-              `Driver is not available. Current status: ${trip.driver.status}`
-            );
-          }
-
-          const dispatchTime = new Date();
-
-          if (
-            trip.driver.licenseExpiryDate <=
-            dispatchTime
-          ) {
-            throw createHttpError(
-              409,
-              "Driver license has expired."
-            );
-          }
-
-          const tripUpdate =
-            await transaction.trip.updateMany({
-              where: {
-                id: trip.id,
-                status: "DRAFT",
-              },
-
-              data: {
-                status: "DISPATCHED",
-                dispatchedAt: dispatchTime,
-                initialOdometer:
-                  trip.initialOdometer ??
-                  Number(trip.vehicle.odometer),
-              },
-            });
-
-          if (tripUpdate.count !== 1) {
-            throw createHttpError(
-              409,
-              "Trip status changed. Please try again."
-            );
-          }
-
-          const vehicleUpdate =
-            await transaction.vehicle.updateMany({
-              where: {
-                id: trip.vehicleId,
-                status: "AVAILABLE",
-              },
-
-              data: {
-                status: "ON_TRIP",
-              },
-            });
-
-          if (vehicleUpdate.count !== 1) {
-            throw createHttpError(
-              409,
-              "Vehicle is no longer available."
-            );
-          }
-
-          const driverUpdate =
-            await transaction.driver.updateMany({
-              where: {
-                id: trip.driverId,
-                status: "AVAILABLE",
-                licenseExpiryDate: {
-                  gt: dispatchTime,
-                },
-              },
-
-              data: {
-                status: "ON_TRIP",
-              },
-            });
-
-          if (driverUpdate.count !== 1) {
-            throw createHttpError(
-              409,
-              "Driver is no longer available or the license has expired."
-            );
-          }
-
-          return transaction.trip.findUnique({
-            where: {
-              id: trip.id,
-            },
-
-            include: {
-              vehicle: true,
-              driver: true,
+          const tripUpdate = await transaction.trip.updateMany({
+            where: { id: trip.id, status: "DRAFT" },
+            data: {
+              status: "DISPATCHED",
+              dispatchedAt: dispatchTime,
+              initialOdometer: trip.initialOdometer ?? Number(trip.vehicle.odometer),
             },
           });
+
+          if (tripUpdate.count !== 1) throw createHttpError(409, "Trip status changed. Please try again.");
+
+          const vehicleUpdate = await transaction.vehicle.updateMany({
+            where: { id: trip.vehicleId, status: "AVAILABLE" },
+            data: { status: "ON_TRIP" },
+          });
+
+          if (vehicleUpdate.count !== 1) throw createHttpError(409, "Vehicle is no longer available.");
+
+          const driverUpdate = await transaction.driver.updateMany({
+            where: {
+              id: trip.driverId,
+              status: "AVAILABLE",
+              licenseExpiryDate: { gt: dispatchTime },
+            },
+            data: { status: "ON_TRIP" },
+          });
+
+          if (driverUpdate.count !== 1) throw createHttpError(409, "Driver is no longer available or the license has expired.");
         },
         {
-          isolationLevel: "Serializable",
+          timeout: 15000 // 🚀 Extended hackathon database ceiling
         }
-      );
+    );
+
+    // 2. Execute read tracking confirmation safely OUTSIDE transaction boundary
+    const dispatchedTrip = await prisma.trip.findUnique({
+      where: { id },
+      include: { vehicle: true, driver: true },
+    });
 
     return res.status(200).json({
       success: true,
@@ -972,7 +722,13 @@ async function dispatchTrip(req, res, next) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| COMPLETE TRIP
+|--------------------------------------------------------------------------
+*/
 async function completeTrip(req, res, next) {
+  const { id } = req.params;
   try {
     const {
       finalOdometer,
@@ -984,59 +740,40 @@ async function completeTrip(req, res, next) {
       fuelDate,
     } = req.body;
 
-    const parsedFinalOdometer =
-      parseNonNegativeNumber(finalOdometer);
+    const parsedFinalOdometer = parseNonNegativeNumber(finalOdometer);
 
     if (parsedFinalOdometer === null) {
       return res.status(400).json({
         success: false,
-        message:
-          "Final odometer is required and must be a valid non-negative number.",
+        message: "Final odometer is required and must be a valid non-negative number.",
       });
     }
 
     let parsedRevenue;
-
     if (revenue !== undefined) {
       if (revenue === null || revenue === "") {
         parsedRevenue = null;
       } else {
-        parsedRevenue =
-          parseNonNegativeNumber(revenue);
-
+        parsedRevenue = parseNonNegativeNumber(revenue);
         if (parsedRevenue === null) {
           return res.status(400).json({
             success: false,
-            message:
-              "Revenue must be a valid non-negative number.",
+            message: "Revenue must be a valid non-negative number.",
           });
         }
       }
     }
 
-    const fuelLiters =
-      fuelConsumed !== undefined
-        ? fuelConsumed
-        : liters;
+    const fuelLiters = fuelConsumed !== undefined ? fuelConsumed : liters;
+    const requestedFuelCost = fuelCost !== undefined ? fuelCost : cost;
 
-    const requestedFuelCost =
-      fuelCost !== undefined ? fuelCost : cost;
-
-    const hasFuelLiters =
-      fuelLiters !== undefined &&
-      fuelLiters !== null &&
-      fuelLiters !== "";
-
-    const hasFuelCost =
-      requestedFuelCost !== undefined &&
-      requestedFuelCost !== null &&
-      requestedFuelCost !== "";
+    const hasFuelLiters = fuelLiters !== undefined && fuelLiters !== null && fuelLiters !== "";
+    const hasFuelCost = requestedFuelCost !== undefined && requestedFuelCost !== null && requestedFuelCost !== "";
 
     if (hasFuelLiters !== hasFuelCost) {
       return res.status(400).json({
         success: false,
-        message:
-          "Fuel consumed and fuel cost must both be provided.",
+        message: "Fuel consumed and fuel cost must both be provided.",
       });
     }
 
@@ -1044,196 +781,95 @@ async function completeTrip(req, res, next) {
     let parsedFuelCost;
 
     if (hasFuelLiters && hasFuelCost) {
-      parsedFuelLiters =
-        parsePositiveNumber(fuelLiters);
-
-      parsedFuelCost =
-        parsePositiveNumber(requestedFuelCost);
+      parsedFuelLiters = parsePositiveNumber(fuelLiters);
+      parsedFuelCost = parsePositiveNumber(requestedFuelCost);
 
       if (parsedFuelLiters === null) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Fuel consumed must be greater than zero.",
-        });
+        return res.status(400).json({ success: false, message: "Fuel consumed must be greater than zero." });
       }
-
       if (parsedFuelCost === null) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Fuel cost must be greater than zero.",
-        });
+        return res.status(400).json({ success: false, message: "Fuel cost must be greater than zero." });
       }
     }
 
     let parsedFuelDate = new Date();
-
     if (fuelDate !== undefined) {
       parsedFuelDate = parseDate(fuelDate);
-
       if (!parsedFuelDate) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid fuel date.",
-        });
+        return res.status(400).json({ success: false, message: "Invalid fuel date." });
       }
     }
 
-    const completedTrip =
-      await prisma.$transaction(
+    // 1. Execute transactional updates
+    await prisma.$transaction(
         async (transaction) => {
-          const trip =
-            await transaction.trip.findUnique({
-              where: {
-                id: req.params.id,
-              },
+          const trip = await transaction.trip.findUnique({
+            where: { id },
+            include: { vehicle: true, driver: true },
+          });
 
-              include: {
-                vehicle: true,
-                driver: true,
-              },
-            });
+          if (!trip) throw createHttpError(404, "Trip not found");
+          if (trip.status !== "DISPATCHED") throw createHttpError(409, "Only dispatched trips can be completed.");
 
-          if (!trip) {
-            throw createHttpError(
-              404,
-              "Trip not found"
-            );
+          const initialOdometer = Number(trip.initialOdometer ?? trip.vehicle.odometer);
+          if (parsedFinalOdometer < initialOdometer) {
+            throw createHttpError(400, "Final odometer cannot be less than initial odometer.");
           }
 
-          if (trip.status !== "DISPATCHED") {
-            throw createHttpError(
-              409,
-              "Only dispatched trips can be completed."
-            );
-          }
-
-          const initialOdometer = Number(
-            trip.initialOdometer ??
-              trip.vehicle.odometer
-          );
-
-          if (
-            parsedFinalOdometer <
-            initialOdometer
-          ) {
-            throw createHttpError(
-              400,
-              "Final odometer cannot be less than initial odometer."
-            );
-          }
-
-          const actualDistance =
-            parsedFinalOdometer -
-            initialOdometer;
-
+          const actualDistance = parsedFinalOdometer - initialOdometer;
           const tripData = {
             status: "COMPLETED",
-            finalOdometer:
-              parsedFinalOdometer,
+            finalOdometer: parsedFinalOdometer,
             actualDistance,
             completedAt: new Date(),
           };
 
           if (revenue !== undefined) {
-            tripData.revenue =
-              parsedRevenue === null
-                ? null
-                : parsedRevenue.toFixed(2);
+            tripData.revenue = parsedRevenue === null ? null : parsedRevenue.toFixed(2);
           }
 
-          const tripUpdate =
-            await transaction.trip.updateMany({
-              where: {
-                id: trip.id,
-                status: "DISPATCHED",
-              },
+          const tripUpdate = await transaction.trip.updateMany({
+            where: { id: trip.id, status: "DISPATCHED" },
+            data: tripData,
+          });
 
-              data: tripData,
-            });
+          if (tripUpdate.count !== 1) throw createHttpError(409, "Trip status changed. Please try again.");
 
-          if (tripUpdate.count !== 1) {
-            throw createHttpError(
-              409,
-              "Trip status changed. Please try again."
-            );
-          }
+          const vehicleUpdate = await transaction.vehicle.updateMany({
+            where: { id: trip.vehicleId, status: "ON_TRIP" },
+            data: { status: "AVAILABLE", odometer: parsedFinalOdometer },
+          });
 
-          const vehicleUpdate =
-            await transaction.vehicle.updateMany({
-              where: {
-                id: trip.vehicleId,
-                status: "ON_TRIP",
-              },
+          if (vehicleUpdate.count !== 1) throw createHttpError(409, "Vehicle status is invalid for completing this trip.");
 
-              data: {
-                status: "AVAILABLE",
-                odometer: parsedFinalOdometer,
-              },
-            });
+          const driverUpdate = await transaction.driver.updateMany({
+            where: { id: trip.driverId, status: "ON_TRIP" },
+            data: { status: "AVAILABLE" },
+          });
 
-          if (vehicleUpdate.count !== 1) {
-            throw createHttpError(
-              409,
-              "Vehicle status is invalid for completing this trip."
-            );
-          }
+          if (driverUpdate.count !== 1) throw createHttpError(409, "Driver status is invalid for completing this trip.");
 
-          const driverUpdate =
-            await transaction.driver.updateMany({
-              where: {
-                id: trip.driverId,
-                status: "ON_TRIP",
-              },
-
-              data: {
-                status: "AVAILABLE",
-              },
-            });
-
-          if (driverUpdate.count !== 1) {
-            throw createHttpError(
-              409,
-              "Driver status is invalid for completing this trip."
-            );
-          }
-
-          if (
-            parsedFuelLiters !== undefined &&
-            parsedFuelCost !== undefined
-          ) {
+          if (parsedFuelLiters !== undefined && parsedFuelCost !== undefined) {
             await transaction.fuelLog.create({
               data: {
                 vehicleId: trip.vehicleId,
                 tripId: trip.id,
                 liters: parsedFuelLiters,
-                cost:
-                  parsedFuelCost.toFixed(2),
+                cost: parsedFuelCost.toFixed(2),
                 date: parsedFuelDate,
-                odometerReading:
-                  parsedFinalOdometer,
+                odometerReading: parsedFinalOdometer,
               },
             });
           }
-
-          return transaction.trip.findUnique({
-            where: {
-              id: trip.id,
-            },
-
-            include: {
-              vehicle: true,
-              driver: true,
-              fuelLogs: true,
-              expenses: true,
-            },
-          });
         },
-        {
-          isolationLevel: "Serializable",
-        }
-      );
+        { timeout: 15000 }
+    );
+
+    // 2. Perform external read outside lock boundaries
+    const completedTrip = await prisma.trip.findUnique({
+      where: { id },
+      include: { vehicle: true, driver: true, fuelLogs: true, expenses: true },
+    });
 
     return res.status(200).json({
       success: true,
@@ -1245,120 +881,57 @@ async function completeTrip(req, res, next) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| CANCEL TRIP
+|--------------------------------------------------------------------------
+*/
 async function cancelTrip(req, res, next) {
+  const { id } = req.params;
   try {
-    const cancelledTrip =
-      await prisma.$transaction(
+    await prisma.$transaction(
         async (transaction) => {
-          const trip =
-            await transaction.trip.findUnique({
-              where: {
-                id: req.params.id,
-              },
+          const trip = await transaction.trip.findUnique({
+            where: { id },
+            include: { vehicle: true, driver: true },
+          });
 
-              include: {
-                vehicle: true,
-                driver: true,
-              },
-            });
-
-          if (!trip) {
-            throw createHttpError(
-              404,
-              "Trip not found"
-            );
-          }
-
-          if (trip.status === "COMPLETED") {
-            throw createHttpError(
-              409,
-              "Completed trip cannot be cancelled."
-            );
-          }
-
-          if (trip.status === "CANCELLED") {
-            throw createHttpError(
-              409,
-              "Trip is already cancelled."
-            );
-          }
+          if (!trip) throw createHttpError(404, "Trip not found");
+          if (trip.status === "COMPLETED") throw createHttpError(409, "Completed trip cannot be cancelled.");
+          if (trip.status === "CANCELLED") throw createHttpError(409, "Trip is already cancelled.");
 
           const previousStatus = trip.status;
 
-          const tripUpdate =
-            await transaction.trip.updateMany({
-              where: {
-                id: trip.id,
-                status: previousStatus,
-              },
+          const tripUpdate = await transaction.trip.updateMany({
+            where: { id: trip.id, status: previousStatus },
+            data: { status: "CANCELLED" },
+          });
 
-              data: {
-                status: "CANCELLED",
-              },
-            });
-
-          if (tripUpdate.count !== 1) {
-            throw createHttpError(
-              409,
-              "Trip status changed. Please try again."
-            );
-          }
+          if (tripUpdate.count !== 1) throw createHttpError(409, "Trip status changed. Please try again.");
 
           if (previousStatus === "DISPATCHED") {
-            const vehicleUpdate =
-              await transaction.vehicle.updateMany({
-                where: {
-                  id: trip.vehicleId,
-                  status: "ON_TRIP",
-                },
+            const vehicleUpdate = await transaction.vehicle.updateMany({
+              where: { id: trip.vehicleId, status: "ON_TRIP" },
+              data: { status: "AVAILABLE" },
+            });
 
-                data: {
-                  status: "AVAILABLE",
-                },
-              });
+            if (vehicleUpdate.count !== 1) throw createHttpError(409, "Vehicle status is invalid for cancelling this trip.");
 
-            if (vehicleUpdate.count !== 1) {
-              throw createHttpError(
-                409,
-                "Vehicle status is invalid for cancelling this trip."
-              );
-            }
+            const driverUpdate = await transaction.driver.updateMany({
+              where: { id: trip.driverId, status: "ON_TRIP" },
+              data: { status: "AVAILABLE" },
+            });
 
-            const driverUpdate =
-              await transaction.driver.updateMany({
-                where: {
-                  id: trip.driverId,
-                  status: "ON_TRIP",
-                },
-
-                data: {
-                  status: "AVAILABLE",
-                },
-              });
-
-            if (driverUpdate.count !== 1) {
-              throw createHttpError(
-                409,
-                "Driver status is invalid for cancelling this trip."
-              );
-            }
+            if (driverUpdate.count !== 1) throw createHttpError(409, "Driver status is invalid for cancelling this trip.");
           }
-
-          return transaction.trip.findUnique({
-            where: {
-              id: trip.id,
-            },
-
-            include: {
-              vehicle: true,
-              driver: true,
-            },
-          });
         },
-        {
-          isolationLevel: "Serializable",
-        }
-      );
+        { timeout: 15000 }
+    );
+
+    const cancelledTrip = await prisma.trip.findUnique({
+      where: { id },
+      include: { vehicle: true, driver: true },
+    });
 
     return res.status(200).json({
       success: true,
@@ -1370,42 +943,33 @@ async function cancelTrip(req, res, next) {
   }
 }
 
+/*
+|--------------------------------------------------------------------------
+| DELETE TRIP
+|--------------------------------------------------------------------------
+*/
 async function deleteTrip(req, res, next) {
   try {
     const { id } = req.params;
 
     const trip = await prisma.trip.findUnique({
-      where: {
-        id,
-      },
-
-      select: {
-        id: true,
-        source: true,
-        destination: true,
-        status: true,
-      },
+      where: { id },
+      select: { id: true, source: true, destination: true, status: true },
     });
 
     if (!trip) {
-      return res.status(404).json({
-        success: false,
-        message: "Trip not found",
-      });
+      return res.status(404).json({ success: false, message: "Trip not found" });
     }
 
     if (trip.status !== "DRAFT") {
       return res.status(409).json({
         success: false,
-        message:
-          "Only draft trips can be deleted.",
+        message: "Only draft trips can be deleted.",
       });
     }
 
     await prisma.trip.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     return res.status(200).json({
@@ -1415,12 +979,8 @@ async function deleteTrip(req, res, next) {
     });
   } catch (error) {
     if (isPrismaNotFoundError(error)) {
-      return res.status(404).json({
-        success: false,
-        message: "Trip not found",
-      });
+      return res.status(404).json({ success: false, message: "Trip not found" });
     }
-
     next(error);
   }
 }
