@@ -1,56 +1,32 @@
-# TransitOps Backend Structure
+# TransitOps Backend — Neon PostgreSQL + Prisma
 
-This ZIP contains a clean backend scaffold for the TransitOps Smart Transport Operations Platform.
+Updated backend structure for the TransitOps Smart Transport Operations Platform.
 
-## Main Flow
+## Request flow
 
-`Route -> Middleware -> Controller -> Service -> Model -> MongoDB`
+`Route -> Middleware -> Validator -> Controller -> Service -> Prisma -> Neon PostgreSQL`
 
-## Modules Included
-
-- Authentication and RBAC
-- Vehicles
-- Drivers
-- Trips
-- Maintenance
-- Fuel Logs
-- Expenses
-- Dashboard and Analytics
-- Reports and CSV export
-- License expiry reminder job
-
-## Run
+## Setup
 
 ```bash
 npm install
-cp .env.example .env
+copy .env.example .env
+npx prisma generate
+npx prisma migrate dev --name init
 npm run dev
 ```
 
-## Folder Tree
+On macOS/Linux, use:
 
-```text
-transitops-backend/
-├── src/
-│   ├── config/
-│   ├── constants/
-│   ├── controllers/
-│   ├── docs/
-│   ├── jobs/
-│   ├── middlewares/
-│   ├── models/
-│   ├── routes/
-│   ├── seeds/
-│   ├── services/
-│   ├── utils/
-│   ├── validators/
-│   ├── app.js
-│   └── server.js
-├── tests/
-│   ├── integration/
-│   └── unit/
-├── .env.example
-├── .gitignore
-├── package.json
-└── README.md
+```bash
+cp .env.example .env
 ```
+
+Replace the database URLs and JWT secret inside `.env` before running migrations.
+
+## Important
+
+- The old Mongoose `models/` folder is not used.
+- All database entities and relationships are defined in `prisma/schema.prisma`.
+- `generated/prisma/` is created by `npx prisma generate`.
+- Trip dispatch/completion/cancellation should use Prisma transactions.
