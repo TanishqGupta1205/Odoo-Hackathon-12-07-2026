@@ -25,18 +25,18 @@ function normalizeStatus(value) {
   if (!value) return null;
 
   return String(value)
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, "_");
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, "_");
 }
 
 function normalizeRegistrationNumber(value) {
   if (!value) return null;
 
   return String(value)
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "");
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "");
 }
 
 function parsePositiveInteger(value, defaultValue) {
@@ -50,11 +50,7 @@ function parsePositiveInteger(value, defaultValue) {
 }
 
 function parsePositiveNumber(value) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
+  if (value === undefined || value === null || value === "") {
     return null;
   }
 
@@ -68,11 +64,7 @@ function parsePositiveNumber(value) {
 }
 
 function parseNonNegativeNumber(value) {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
+  if (value === undefined || value === null || value === "") {
     return null;
   }
 
@@ -106,29 +98,25 @@ function formatVehicle(vehicle) {
 
   return {
     ...vehicle,
-    acquisitionCost: decimalToNumber(
-      vehicle.acquisitionCost
-    ),
-    maintenanceLogs: Array.isArray(
-      vehicle.maintenanceLogs
-    )
-      ? vehicle.maintenanceLogs.map((maintenance) => ({
+    acquisitionCost: decimalToNumber(vehicle.acquisitionCost),
+    maintenanceLogs: Array.isArray(vehicle.maintenanceLogs)
+        ? vehicle.maintenanceLogs.map((maintenance) => ({
           ...maintenance,
           cost: decimalToNumber(maintenance.cost),
         }))
-      : undefined,
+        : undefined,
     fuelLogs: Array.isArray(vehicle.fuelLogs)
-      ? vehicle.fuelLogs.map((fuelLog) => ({
+        ? vehicle.fuelLogs.map((fuelLog) => ({
           ...fuelLog,
           cost: decimalToNumber(fuelLog.cost),
         }))
-      : undefined,
+        : undefined,
     expenses: Array.isArray(vehicle.expenses)
-      ? vehicle.expenses.map((expense) => ({
+        ? vehicle.expenses.map((expense) => ({
           ...expense,
           amount: decimalToNumber(expense.amount),
         }))
-      : undefined,
+        : undefined,
   };
 }
 
@@ -145,42 +133,22 @@ async function getAllVehicles(req, res, next) {
       sortOrder = "desc",
     } = req.query;
 
-    const page = parsePositiveInteger(
-      req.query.page,
-      1
-    );
-
-    const requestedLimit = parsePositiveInteger(
-      req.query.limit,
-      10
-    );
-
+    const page = parsePositiveInteger(req.query.page, 1);
+    const requestedLimit = parsePositiveInteger(req.query.limit, 10);
     const limit = Math.min(requestedLimit, 100);
     const skip = (page - 1) * limit;
 
     const normalizedStatus = normalizeStatus(status);
 
-    if (
-      normalizedStatus &&
-      !VEHICLE_STATUSES.includes(normalizedStatus)
-    ) {
+    if (normalizedStatus && !VEHICLE_STATUSES.includes(normalizedStatus)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid vehicle status. Use AVAILABLE, ON_TRIP, IN_SHOP or RETIRED.",
+        message: "Invalid vehicle status. Use AVAILABLE, ON_TRIP, IN_SHOP or RETIRED.",
       });
     }
 
-    const safeSortBy = ALLOWED_SORT_FIELDS.includes(
-      sortBy
-    )
-      ? sortBy
-      : "createdAt";
-
-    const safeSortOrder =
-      String(sortOrder).toLowerCase() === "asc"
-        ? "asc"
-        : "desc";
+    const safeSortBy = ALLOWED_SORT_FIELDS.includes(sortBy) ? sortBy : "createdAt";
+    const safeSortOrder = String(sortOrder).toLowerCase() === "asc" ? "asc" : "desc";
 
     const where = {};
 
@@ -204,121 +172,74 @@ async function getAllVehicles(req, res, next) {
 
     if (search && String(search).trim()) {
       const searchValue = String(search).trim();
-
       where.OR = [
-        {
-          registrationNumber: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          vehicleName: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          model: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          type: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          region: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
+        { registrationNumber: { contains: searchValue, mode: "insensitive" } },
+        { vehicleName: { contains: searchValue, mode: "insensitive" } },
+        { model: { contains: searchValue, mode: "insensitive" } },
+        { type: { contains: searchValue, mode: "insensitive" } },
+        { region: { contains: searchValue, mode: "insensitive" } },
       ];
     }
 
-    if (
-      minCapacity !== undefined ||
-      maxCapacity !== undefined
-    ) {
+    // Refactored Capacity Checking (Proper Scoping & Performance Fix)
+    if (minCapacity !== undefined || maxCapacity !== undefined) {
       where.maximumLoadCapacity = {};
+      let parsedMin = null;
+      let parsedMax = null;
 
       if (minCapacity !== undefined) {
-        const parsedMinCapacity =
-          parseNonNegativeNumber(minCapacity);
-
-        if (parsedMinCapacity === null) {
+        parsedMin = parseNonNegativeNumber(minCapacity);
+        if (parsedMin === null) {
           return res.status(400).json({
             success: false,
-            message:
-              "Minimum capacity must be a valid non-negative number.",
+            message: "Minimum capacity must be a valid non-negative number.",
           });
         }
-
-        where.maximumLoadCapacity.gte =
-          parsedMinCapacity;
+        where.maximumLoadCapacity.gte = parsedMin;
       }
 
       if (maxCapacity !== undefined) {
-        const parsedMaxCapacity =
-          parseNonNegativeNumber(maxCapacity);
-
-        if (parsedMaxCapacity === null) {
+        parsedMax = parseNonNegativeNumber(maxCapacity);
+        if (parsedMax === null) {
           return res.status(400).json({
             success: false,
-            message:
-              "Maximum capacity must be a valid non-negative number.",
+            message: "Maximum capacity must be a valid non-negative number.",
           });
         }
-
-        where.maximumLoadCapacity.lte =
-          parsedMaxCapacity;
+        where.maximumLoadCapacity.lte = parsedMax;
       }
 
-      if (
-        minCapacity !== undefined &&
-        maxCapacity !== undefined &&
-        Number(minCapacity) > Number(maxCapacity)
-      ) {
+      if (parsedMin !== null && parsedMax !== null && parsedMin > parsedMax) {
         return res.status(400).json({
           success: false,
-          message:
-            "Minimum capacity cannot be greater than maximum capacity.",
+          message: "Minimum capacity cannot be greater than maximum capacity.",
         });
       }
     }
 
-    const [vehicles, totalVehicles] =
-      await prisma.$transaction([
-        prisma.vehicle.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: {
-            [safeSortBy]: safeSortOrder,
-          },
-          include: {
-            _count: {
-              select: {
-                trips: true,
-                maintenanceLogs: true,
-                fuelLogs: true,
-                expenses: true,
-              },
+    const [vehicles, totalVehicles] = await prisma.$transaction([
+      prisma.vehicle.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          [safeSortBy]: safeSortOrder,
+        },
+        include: {
+          _count: {
+            select: {
+              trips: true,
+              maintenanceLogs: true,
+              fuelLogs: true,
+              expenses: true,
             },
           },
-        }),
+        },
+      }),
+      prisma.vehicle.count({ where }),
+    ]);
 
-        prisma.vehicle.count({
-          where,
-        }),
-      ]);
-
-    const totalPages = Math.ceil(
-      totalVehicles / limit
-    );
+    const totalPages = Math.ceil(totalVehicles / limit);
 
     return res.status(200).json({
       success: true,
@@ -346,38 +267,22 @@ async function getAllVehicles(req, res, next) {
   }
 }
 
-async function getAvailableVehicles(
-  req,
-  res,
-  next
-) {
+async function getAvailableVehicles(req, res, next) {
   try {
-    const {
-      cargoWeight,
-      type,
-      region,
-      search,
-    } = req.query;
+    const { cargoWeight, type, region, search } = req.query;
 
     const where = {
       status: "AVAILABLE",
     };
 
-    if (
-      cargoWeight !== undefined &&
-      cargoWeight !== ""
-    ) {
-      const parsedCargoWeight =
-        parsePositiveNumber(cargoWeight);
-
+    if (cargoWeight !== undefined && cargoWeight !== "") {
+      const parsedCargoWeight = parsePositiveNumber(cargoWeight);
       if (parsedCargoWeight === null) {
         return res.status(400).json({
           success: false,
-          message:
-            "Cargo weight must be greater than zero.",
+          message: "Cargo weight must be greater than zero.",
         });
       }
-
       where.maximumLoadCapacity = {
         gte: parsedCargoWeight,
       };
@@ -399,36 +304,19 @@ async function getAvailableVehicles(
 
     if (search && String(search).trim()) {
       const searchValue = String(search).trim();
-
       where.OR = [
-        {
-          registrationNumber: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          vehicleName: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
-        {
-          model: {
-            contains: searchValue,
-            mode: "insensitive",
-          },
-        },
+        { registrationNumber: { contains: searchValue, mode: "insensitive" } },
+        { vehicleName: { contains: searchValue, mode: "insensitive" } },
+        { model: { contains: searchValue, mode: "insensitive" } },
       ];
     }
 
-    const vehicles =
-      await prisma.vehicle.findMany({
-        where,
-        orderBy: {
-          vehicleName: "asc",
-        },
-      });
+    const vehicles = await prisma.vehicle.findMany({
+      where,
+      orderBy: {
+        vehicleName: "asc",
+      },
+    });
 
     return res.status(200).json({
       success: true,
@@ -444,67 +332,56 @@ async function getVehicleById(req, res, next) {
   try {
     const { id } = req.params;
 
-    const vehicle =
-      await prisma.vehicle.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          trips: {
-            take: 10,
-            orderBy: {
-              createdAt: "desc",
-            },
-            select: {
-              id: true,
-              source: true,
-              destination: true,
-              cargoWeight: true,
-              plannedDistance: true,
-              actualDistance: true,
-              revenue: true,
-              status: true,
-              dispatchedAt: true,
-              completedAt: true,
-              createdAt: true,
-              driver: {
-                select: {
-                  id: true,
-                  name: true,
-                  licenseNumber: true,
-                  status: true,
-                },
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id },
+      include: {
+        trips: {
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            source: true,
+            destination: true,
+            cargoWeight: true,
+            plannedDistance: true,
+            actualDistance: true,
+            revenue: true,
+            status: true,
+            dispatchedAt: true,
+            completedAt: true,
+            createdAt: true,
+            driver: {
+              select: {
+                id: true,
+                name: true,
+                licenseNumber: true,
+                status: true,
               },
             },
           },
-          maintenanceLogs: {
-            take: 10,
-            orderBy: {
-              startDate: "desc",
-            },
-          },
-          fuelLogs: {
-            take: 10,
-            orderBy: {
-              date: "desc",
-            },
-          },
-          expenses: {
-            take: 10,
-            orderBy: {
-              date: "desc",
-            },
-          },
-          _count: {
-            select: {
-              trips: true,
-              maintenanceLogs: true,
-              fuelLogs: true,
-              expenses: true,
-            },
+        },
+        maintenanceLogs: {
+          take: 10,
+          orderBy: { startDate: "desc" },
+        },
+        fuelLogs: {
+          take: 10,
+          orderBy: { date: "desc" },
+        },
+        expenses: {
+          take: 10,
+          orderBy: { date: "desc" },
+        },
+        _count: {
+          select: {
+            trips: true,
+            maintenanceLogs: true,
+            fuelLogs: true,
+            expenses: true,
           },
         },
-      });
+      },
+    });
 
     if (!vehicle) {
       return res.status(404).json({
@@ -513,14 +390,12 @@ async function getVehicleById(req, res, next) {
       });
     }
 
-    const formattedVehicle =
-      formatVehicle(vehicle);
+    const formattedVehicle = formatVehicle(vehicle);
 
-    formattedVehicle.trips =
-      formattedVehicle.trips.map((trip) => ({
-        ...trip,
-        revenue: decimalToNumber(trip.revenue),
-      }));
+    formattedVehicle.trips = formattedVehicle.trips.map((trip) => ({
+      ...trip,
+      revenue: decimalToNumber(trip.revenue),
+    }));
 
     return res.status(200).json({
       success: true,
@@ -546,127 +421,85 @@ async function createVehicle(req, res, next) {
     } = req.body;
 
     if (
-      !registrationNumber ||
-      !vehicleName ||
-      !type ||
-      maximumLoadCapacity === undefined ||
-      acquisitionCost === undefined
+        !registrationNumber ||
+        !vehicleName ||
+        !type ||
+        maximumLoadCapacity === undefined ||
+        acquisitionCost === undefined
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Registration number, vehicle name, type, maximum load capacity and acquisition cost are required.",
+        message: "Registration number, vehicle name, type, maximum load capacity and acquisition cost are required.",
       });
     }
 
-    if (
-      !String(registrationNumber).trim() ||
-      !String(vehicleName).trim() ||
-      !String(type).trim()
-    ) {
+    if (!String(registrationNumber).trim() || !String(vehicleName).trim() || !String(type).trim()) {
       return res.status(400).json({
         success: false,
-        message:
-          "Required fields cannot be empty.",
+        message: "Required fields cannot be empty.",
       });
     }
 
-    const parsedCapacity =
-      parsePositiveNumber(maximumLoadCapacity);
-
+    const parsedCapacity = parsePositiveNumber(maximumLoadCapacity);
     if (parsedCapacity === null) {
       return res.status(400).json({
         success: false,
-        message:
-          "Maximum load capacity must be greater than zero.",
+        message: "Maximum load capacity must be greater than zero.",
       });
     }
 
-    const parsedAcquisitionCost =
-      parseNonNegativeNumber(acquisitionCost);
-
+    const parsedAcquisitionCost = parseNonNegativeNumber(acquisitionCost);
     if (parsedAcquisitionCost === null) {
       return res.status(400).json({
         success: false,
-        message:
-          "Acquisition cost must be a valid non-negative number.",
+        message: "Acquisition cost must be a valid non-negative number.",
       });
     }
 
-    const parsedOdometer =
-      odometer === undefined
-        ? 0
-        : parseNonNegativeNumber(odometer);
-
+    const parsedOdometer = odometer === undefined ? 0 : parseNonNegativeNumber(odometer);
     if (parsedOdometer === null) {
       return res.status(400).json({
         success: false,
-        message:
-          "Odometer must be a valid non-negative number.",
+        message: "Odometer must be a valid non-negative number.",
       });
     }
 
-    const normalizedStatus =
-      normalizeStatus(status) || "AVAILABLE";
+    const normalizedStatus = normalizeStatus(status) || "AVAILABLE";
 
-    if (
-      !["AVAILABLE", "RETIRED"].includes(
-        normalizedStatus
-      )
-    ) {
+    if (!["AVAILABLE", "RETIRED"].includes(normalizedStatus)) {
       return res.status(400).json({
         success: false,
-        message:
-          "New vehicle status can only be AVAILABLE or RETIRED.",
+        message: "New vehicle status can only be AVAILABLE or RETIRED.",
       });
     }
 
-    const normalizedRegistration =
-      normalizeRegistrationNumber(
-        registrationNumber
-      );
+    const normalizedRegistration = normalizeRegistrationNumber(registrationNumber);
 
-    const existingVehicle =
-      await prisma.vehicle.findUnique({
-        where: {
-          registrationNumber:
-            normalizedRegistration,
-        },
-        select: {
-          id: true,
-        },
-      });
+    const existingVehicle = await prisma.vehicle.findUnique({
+      where: { registrationNumber: normalizedRegistration },
+      select: { id: true },
+    });
 
     if (existingVehicle) {
       return res.status(409).json({
         success: false,
-        message:
-          "Vehicle registration number already exists.",
+        message: "Vehicle registration number already exists.",
       });
     }
 
-    const vehicle =
-      await prisma.vehicle.create({
-        data: {
-          registrationNumber:
-            normalizedRegistration,
-          vehicleName:
-            String(vehicleName).trim(),
-          model: model
-            ? String(model).trim()
-            : null,
-          type: String(type).trim(),
-          maximumLoadCapacity:
-            parsedCapacity,
-          odometer: parsedOdometer,
-          acquisitionCost:
-            parsedAcquisitionCost.toFixed(2),
-          region: region
-            ? String(region).trim()
-            : null,
-          status: normalizedStatus,
-        },
-      });
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        registrationNumber: normalizedRegistration,
+        vehicleName: String(vehicleName).trim(),
+        model: model ? String(model).trim() : null,
+        type: String(type).trim(),
+        maximumLoadCapacity: parsedCapacity,
+        odometer: parsedOdometer,
+        acquisitionCost: parsedAcquisitionCost, // Fix applied here (No .toFixed(2))
+        region: region ? String(region).trim() : null,
+        status: normalizedStatus,
+      },
+    });
 
     return res.status(201).json({
       success: true,
@@ -677,11 +510,9 @@ async function createVehicle(req, res, next) {
     if (isPrismaUniqueError(error)) {
       return res.status(409).json({
         success: false,
-        message:
-          "Vehicle registration number already exists.",
+        message: "Vehicle registration number already exists.",
       });
     }
-
     next(error);
   }
 }
@@ -689,7 +520,6 @@ async function createVehicle(req, res, next) {
 async function updateVehicle(req, res, next) {
   try {
     const { id } = req.params;
-
     const {
       registrationNumber,
       vehicleName,
@@ -702,12 +532,9 @@ async function updateVehicle(req, res, next) {
       status,
     } = req.body;
 
-    const existingVehicle =
-      await prisma.vehicle.findUnique({
-        where: {
-          id,
-        },
-      });
+    const existingVehicle = await prisma.vehicle.findUnique({
+      where: { id },
+    });
 
     if (!existingVehicle) {
       return res.status(404).json({
@@ -722,198 +549,127 @@ async function updateVehicle(req, res, next) {
       if (!String(registrationNumber).trim()) {
         return res.status(400).json({
           success: false,
-          message:
-            "Registration number cannot be empty.",
+          message: "Registration number cannot be empty.",
         });
       }
-
-      updateData.registrationNumber =
-        normalizeRegistrationNumber(
-          registrationNumber
-        );
+      updateData.registrationNumber = normalizeRegistrationNumber(registrationNumber);
     }
 
     if (vehicleName !== undefined) {
       if (!String(vehicleName).trim()) {
         return res.status(400).json({
           success: false,
-          message:
-            "Vehicle name cannot be empty.",
+          message: "Vehicle name cannot be empty.",
         });
       }
-
-      updateData.vehicleName =
-        String(vehicleName).trim();
+      updateData.vehicleName = String(vehicleName).trim();
     }
 
     if (model !== undefined) {
-      updateData.model = model
-        ? String(model).trim()
-        : null;
+      updateData.model = model ? String(model).trim() : null;
     }
 
     if (type !== undefined) {
       if (!String(type).trim()) {
         return res.status(400).json({
           success: false,
-          message:
-            "Vehicle type cannot be empty.",
+          message: "Vehicle type cannot be empty.",
         });
       }
-
       updateData.type = String(type).trim();
     }
 
     if (maximumLoadCapacity !== undefined) {
-      const parsedCapacity =
-        parsePositiveNumber(
-          maximumLoadCapacity
-        );
-
+      const parsedCapacity = parsePositiveNumber(maximumLoadCapacity);
       if (parsedCapacity === null) {
         return res.status(400).json({
           success: false,
-          message:
-            "Maximum load capacity must be greater than zero.",
+          message: "Maximum load capacity must be greater than zero.",
         });
       }
-
-      updateData.maximumLoadCapacity =
-        parsedCapacity;
+      updateData.maximumLoadCapacity = parsedCapacity;
     }
 
     if (odometer !== undefined) {
-      const parsedOdometer =
-        parseNonNegativeNumber(odometer);
-
+      const parsedOdometer = parseNonNegativeNumber(odometer);
       if (parsedOdometer === null) {
         return res.status(400).json({
           success: false,
-          message:
-            "Odometer must be a valid non-negative number.",
+          message: "Odometer must be a valid non-negative number.",
         });
       }
-
-      if (
-        parsedOdometer <
-        Number(existingVehicle.odometer)
-      ) {
+      if (parsedOdometer < Number(existingVehicle.odometer)) {
         return res.status(400).json({
           success: false,
-          message:
-            "Odometer cannot be less than the current odometer.",
+          message: "Odometer cannot be less than the current odometer.",
         });
       }
-
       updateData.odometer = parsedOdometer;
     }
 
     if (acquisitionCost !== undefined) {
-      const parsedCost =
-        parseNonNegativeNumber(
-          acquisitionCost
-        );
-
+      const parsedCost = parseNonNegativeNumber(acquisitionCost);
       if (parsedCost === null) {
         return res.status(400).json({
           success: false,
-          message:
-            "Acquisition cost must be a valid non-negative number.",
+          message: "Acquisition cost must be a valid non-negative number.",
         });
       }
-
-      updateData.acquisitionCost =
-        parsedCost.toFixed(2);
+      updateData.acquisitionCost = parsedCost; // Fix applied here (No .toFixed(2))
     }
 
     if (region !== undefined) {
-      updateData.region = region
-        ? String(region).trim()
-        : null;
+      updateData.region = region ? String(region).trim() : null;
     }
 
     if (status !== undefined) {
-      const normalizedStatus =
-        normalizeStatus(status);
+      const normalizedStatus = normalizeStatus(status);
 
-      if (
-        !VEHICLE_STATUSES.includes(
-          normalizedStatus
-        )
-      ) {
+      if (!VEHICLE_STATUSES.includes(normalizedStatus)) {
         return res.status(400).json({
           success: false,
-          message:
-            "Invalid vehicle status.",
+          message: "Invalid vehicle status.",
         });
       }
 
-      if (
-        normalizedStatus === "ON_TRIP" &&
-        existingVehicle.status !== "ON_TRIP"
-      ) {
+      if (normalizedStatus === "ON_TRIP" && existingVehicle.status !== "ON_TRIP") {
         return res.status(400).json({
           success: false,
-          message:
-            "ON_TRIP status cannot be assigned manually. Dispatch a trip instead.",
+          message: "ON_TRIP status cannot be assigned manually. Dispatch a trip instead.",
         });
       }
 
-      if (
-        normalizedStatus === "IN_SHOP" &&
-        existingVehicle.status !== "IN_SHOP"
-      ) {
+      if (normalizedStatus === "IN_SHOP" && existingVehicle.status !== "IN_SHOP") {
         return res.status(400).json({
           success: false,
-          message:
-            "IN_SHOP status cannot be assigned manually. Create a maintenance record instead.",
+          message: "IN_SHOP status cannot be assigned manually. Create a maintenance record instead.",
         });
       }
 
-      if (
-        existingVehicle.status === "ON_TRIP" &&
-        normalizedStatus !== "ON_TRIP"
-      ) {
-        const activeTrip =
-          await prisma.trip.findFirst({
-            where: {
-              vehicleId: id,
-              status: "DISPATCHED",
-            },
-            select: {
-              id: true,
-            },
-          });
+      if (existingVehicle.status === "ON_TRIP" && normalizedStatus !== "ON_TRIP") {
+        const activeTrip = await prisma.trip.findFirst({
+          where: { vehicleId: id, status: "DISPATCHED" },
+          select: { id: true },
+        });
 
         if (activeTrip) {
           return res.status(409).json({
             success: false,
-            message:
-              "Vehicle is assigned to an active trip. Complete or cancel the trip first.",
+            message: "Vehicle is assigned to an active trip. Complete or cancel the trip first.",
           });
         }
       }
 
-      if (
-        existingVehicle.status === "IN_SHOP" &&
-        normalizedStatus === "AVAILABLE"
-      ) {
-        const activeMaintenance =
-          await prisma.maintenance.findFirst({
-            where: {
-              vehicleId: id,
-              status: "ACTIVE",
-            },
-            select: {
-              id: true,
-            },
-          });
+      if (existingVehicle.status === "IN_SHOP" && normalizedStatus === "AVAILABLE") {
+        const activeMaintenance = await prisma.maintenance.findFirst({
+          where: { vehicleId: id, status: "ACTIVE" },
+          select: { id: true },
+        });
 
         if (activeMaintenance) {
           return res.status(409).json({
             success: false,
-            message:
-              "Vehicle has active maintenance. Close the maintenance record first.",
+            message: "Vehicle has active maintenance. Close the maintenance record first.",
           });
         }
       }
@@ -924,18 +680,14 @@ async function updateVehicle(req, res, next) {
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "Provide at least one field to update.",
+        message: "Provide at least one field to update.",
       });
     }
 
-    const updatedVehicle =
-      await prisma.vehicle.update({
-        where: {
-          id,
-        },
-        data: updateData,
-      });
+    const updatedVehicle = await prisma.vehicle.update({
+      where: { id },
+      data: updateData,
+    });
 
     return res.status(200).json({
       success: true,
@@ -946,18 +698,15 @@ async function updateVehicle(req, res, next) {
     if (isPrismaUniqueError(error)) {
       return res.status(409).json({
         success: false,
-        message:
-          "Vehicle registration number already exists.",
+        message: "Vehicle registration number already exists.",
       });
     }
-
     if (isPrismaNotFoundError(error)) {
       return res.status(404).json({
         success: false,
         message: "Vehicle not found",
       });
     }
-
     next(error);
   }
 }
@@ -966,12 +715,9 @@ async function retireVehicle(req, res, next) {
   try {
     const { id } = req.params;
 
-    const vehicle =
-      await prisma.vehicle.findUnique({
-        where: {
-          id,
-        },
-      });
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id },
+    });
 
     if (!vehicle) {
       return res.status(404).json({
@@ -990,20 +736,14 @@ async function retireVehicle(req, res, next) {
     if (vehicle.status === "ON_TRIP") {
       return res.status(409).json({
         success: false,
-        message:
-          "Vehicle is currently on a trip. Complete or cancel the trip first.",
+        message: "Vehicle is currently on a trip. Complete or cancel the trip first.",
       });
     }
 
-    const retiredVehicle =
-      await prisma.vehicle.update({
-        where: {
-          id,
-        },
-        data: {
-          status: "RETIRED",
-        },
-      });
+    const retiredVehicle = await prisma.vehicle.update({
+      where: { id },
+      data: { status: "RETIRED" },
+    });
 
     return res.status(200).json({
       success: true,
@@ -1019,12 +759,9 @@ async function restoreVehicle(req, res, next) {
   try {
     const { id } = req.params;
 
-    const vehicle =
-      await prisma.vehicle.findUnique({
-        where: {
-          id,
-        },
-      });
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id },
+    });
 
     if (!vehicle) {
       return res.status(404).json({
@@ -1036,39 +773,26 @@ async function restoreVehicle(req, res, next) {
     if (vehicle.status !== "RETIRED") {
       return res.status(409).json({
         success: false,
-        message:
-          "Only retired vehicles can be restored.",
+        message: "Only retired vehicles can be restored.",
       });
     }
 
-    const activeMaintenance =
-      await prisma.maintenance.findFirst({
-        where: {
-          vehicleId: id,
-          status: "ACTIVE",
-        },
-        select: {
-          id: true,
-        },
-      });
+    const activeMaintenance = await prisma.maintenance.findFirst({
+      where: { vehicleId: id, status: "ACTIVE" },
+      select: { id: true },
+    });
 
     if (activeMaintenance) {
       return res.status(409).json({
         success: false,
-        message:
-          "Vehicle has active maintenance and cannot be restored to available.",
+        message: "Vehicle has active maintenance and cannot be restored to available.",
       });
     }
 
-    const restoredVehicle =
-      await prisma.vehicle.update({
-        where: {
-          id,
-        },
-        data: {
-          status: "AVAILABLE",
-        },
-      });
+    const restoredVehicle = await prisma.vehicle.update({
+      where: { id },
+      data: { status: "AVAILABLE" },
+    });
 
     return res.status(200).json({
       success: true,
@@ -1084,22 +808,19 @@ async function deleteVehicle(req, res, next) {
   try {
     const { id } = req.params;
 
-    const vehicle =
-      await prisma.vehicle.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          _count: {
-            select: {
-              trips: true,
-              maintenanceLogs: true,
-              fuelLogs: true,
-              expenses: true,
-            },
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            trips: true,
+            maintenanceLogs: true,
+            fuelLogs: true,
+            expenses: true,
           },
         },
-      });
+      },
+    });
 
     if (!vehicle) {
       return res.status(404).json({
@@ -1111,29 +832,25 @@ async function deleteVehicle(req, res, next) {
     if (vehicle.status === "ON_TRIP") {
       return res.status(409).json({
         success: false,
-        message:
-          "Vehicle is currently on a trip and cannot be deleted.",
+        message: "Vehicle is currently on a trip and cannot be deleted.",
       });
     }
 
     const hasHistory =
-      vehicle._count.trips > 0 ||
-      vehicle._count.maintenanceLogs > 0 ||
-      vehicle._count.fuelLogs > 0 ||
-      vehicle._count.expenses > 0;
+        vehicle._count.trips > 0 ||
+        vehicle._count.maintenanceLogs > 0 ||
+        vehicle._count.fuelLogs > 0 ||
+        vehicle._count.expenses > 0;
 
     if (hasHistory) {
       return res.status(409).json({
         success: false,
-        message:
-          "Vehicle has operational history and cannot be deleted. Retire the vehicle instead.",
+        message: "Vehicle has operational history and cannot be deleted. Retire the vehicle instead.",
       });
     }
 
     await prisma.vehicle.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     return res.status(200).json({
@@ -1147,39 +864,22 @@ async function deleteVehicle(req, res, next) {
         message: "Vehicle not found",
       });
     }
-
     next(error);
   }
 }
 
-async function getVehicleSummary(
-  req,
-  res,
-  next
-) {
+async function getVehicleSummary(req, res, next) {
   try {
-    const [
-      totalVehicles,
-      statusGroups,
-      typeGroups,
-      vehicleAggregate,
-    ] = await Promise.all([
+    const [totalVehicles, statusGroups, typeGroups, vehicleAggregate] = await Promise.all([
       prisma.vehicle.count(),
-
       prisma.vehicle.groupBy({
         by: ["status"],
-        _count: {
-          _all: true,
-        },
+        _count: { _all: true },
       }),
-
       prisma.vehicle.groupBy({
         by: ["type"],
-        _count: {
-          _all: true,
-        },
+        _count: { _all: true },
       }),
-
       prisma.vehicle.aggregate({
         _sum: {
           acquisitionCost: true,
@@ -1195,47 +895,23 @@ async function getVehicleSummary(
 
     return res.status(200).json({
       success: true,
-      message:
-        "Vehicle summary fetched successfully",
+      message: "Vehicle summary fetched successfully",
       summary: {
         totalVehicles,
-        totalAcquisitionCost:
-          decimalToNumber(
-            vehicleAggregate._sum
-              .acquisitionCost
-          ),
-        totalLoadCapacity:
-          Number(
-            vehicleAggregate._sum
-              .maximumLoadCapacity || 0
-          ),
-        averageAcquisitionCost:
-          decimalToNumber(
-            vehicleAggregate._avg
-              .acquisitionCost
-          ),
-        averageLoadCapacity:
-          Number(
-            vehicleAggregate._avg
-              .maximumLoadCapacity || 0
-          ),
-        averageOdometer:
-          Number(
-            vehicleAggregate._avg.odometer || 0
-          ),
+        totalAcquisitionCost: decimalToNumber(vehicleAggregate._sum.acquisitionCost),
+        totalLoadCapacity: Number(vehicleAggregate._sum.maximumLoadCapacity || 0),
+        averageAcquisitionCost: decimalToNumber(vehicleAggregate._avg.acquisitionCost),
+        averageLoadCapacity: Number(vehicleAggregate._avg.maximumLoadCapacity || 0),
+        averageOdometer: Number(vehicleAggregate._avg.odometer || 0),
       },
-      statusDistribution: statusGroups.map(
-        (item) => ({
-          status: item.status,
-          count: item._count._all,
-        })
-      ),
-      typeDistribution: typeGroups.map(
-        (item) => ({
-          type: item.type,
-          count: item._count._all,
-        })
-      ),
+      statusDistribution: statusGroups.map((item) => ({
+        status: item.status,
+        count: item._count._all,
+      })),
+      typeDistribution: typeGroups.map((item) => ({
+        type: item.type,
+        count: item._count._all,
+      })),
     });
   } catch (error) {
     next(error);

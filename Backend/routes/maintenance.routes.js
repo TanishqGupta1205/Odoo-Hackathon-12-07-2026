@@ -1,61 +1,62 @@
 const express = require("express");
 
 const maintenanceController = require(
-  "../controllers/maintenance.controller"
+    "../controllers/maintenance.controller"
 );
 
-const authMiddleware = require(
-  "../middlewares/auth.middleware"
+// 🛠️ FIX: Destructure the exact function from your middleware file
+const { verifyToken } = require(
+    "../middlewares/auth.middleware"
 );
 
 const router = express.Router();
 
 router.get(
-  "/summary",
-  authMiddleware,
-  maintenanceController.getMaintenanceSummary
+    "/summary",
+    verifyToken,
+    maintenanceController.getMaintenanceSummary
 );
 
 router.get(
-  "/active",
-  authMiddleware,
-  maintenanceController.getActiveMaintenance
+    "/active",
+    verifyToken,
+    maintenanceController.getActiveMaintenance
 );
 
 router.get(
-  "/",
-  authMiddleware,
-  maintenanceController.getAllMaintenance
+    "/",
+    verifyToken,
+    maintenanceController.getAllMaintenance
 );
 
 router.get(
-  "/:id",
-  authMiddleware,
-  maintenanceController.getMaintenanceById
+    "/:id",
+    verifyToken,
+    maintenanceController.getMaintenanceById
 );
 
 router.post(
-  "/",
-  authMiddleware,
-  maintenanceController.createMaintenance
+    "/",
+    verifyToken,
+    maintenanceController.createMaintenance
 );
 
 router.patch(
-  "/:id",
-  authMiddleware,
-  maintenanceController.updateMaintenance
+    "/:id",
+    verifyToken,
+    maintenanceController.updateMaintenance
 );
 
 router.patch(
-  "/:id/close",
-  authMiddleware,
-  maintenanceController.closeMaintenance
+    "/:id/close",
+    verifyToken,
+    maintenanceController.closeMaintenance
 );
 
 router.delete(
-  "/:id",
-  authMiddleware,
-  maintenanceController.deleteMaintenance
+    "/:id",
+    verifyToken,
+    maintenanceController.deleteMaintenance
 );
 
 module.exports = router;

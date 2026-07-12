@@ -1,67 +1,68 @@
 const express = require("express");
 
 const vehicleController = require(
-  "../controllers/vehicle.controller"
+    "../controllers/vehicle.controller"
 );
 
-const authMiddleware = require(
-  "../middlewares/auth.middleware"
+// Destructure the specific function from your middleware file
+const { verifyToken } = require(
+    "../middlewares/auth.middleware"
 );
 
 const router = express.Router();
 
 router.get(
-  "/summary",
-  authMiddleware,
-  vehicleController.getVehicleSummary
+    "/summary",
+    verifyToken,
+    vehicleController.getVehicleSummary
 );
 
 router.get(
-  "/available",
-  authMiddleware,
-  vehicleController.getAvailableVehicles
+    "/available",
+    verifyToken,
+    vehicleController.getAvailableVehicles
 );
 
 router.get(
-  "/",
-  authMiddleware,
-  vehicleController.getAllVehicles
+    "/",
+    verifyToken,
+    vehicleController.getAllVehicles
 );
 
 router.post(
-  "/",
-  authMiddleware,
-  vehicleController.createVehicle
+    "/",
+    verifyToken,
+    vehicleController.createVehicle
 );
 
 router.patch(
-  "/:id/retire",
-  authMiddleware,
-  vehicleController.retireVehicle
+    "/:id/retire",
+    verifyToken,
+    vehicleController.retireVehicle
 );
 
 router.patch(
-  "/:id/restore",
-  authMiddleware,
-  vehicleController.restoreVehicle
+    "/:id/restore",
+    verifyToken,
+    vehicleController.restoreVehicle
 );
 
 router.get(
-  "/:id",
-  authMiddleware,
-  vehicleController.getVehicleById
+    "/:id",
+    verifyToken,
+    vehicleController.getVehicleById
 );
 
 router.patch(
-  "/:id",
-  authMiddleware,
-  vehicleController.updateVehicle
+    "/:id",
+    verifyToken,
+    vehicleController.updateVehicle
 );
 
 router.delete(
-  "/:id",
-  authMiddleware,
-  vehicleController.deleteVehicle
+    "/:id",
+    verifyToken,
+    vehicleController.deleteVehicle
 );
 
 module.exports = router;

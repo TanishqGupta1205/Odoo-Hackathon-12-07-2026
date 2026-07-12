@@ -3,63 +3,62 @@
 const express = require("express");
 
 const driverController = require(
-  "../controllers/driver.controller"
+    "../controllers/driver.controller"
 );
 
-const authMiddleware = require(
-  "../middlewares/auth.middleware"
+// 🛠️ FIX: Destructure the exact function from your middleware file
+const { verifyToken } = require(
+    "../middlewares/auth.middleware"
 );
 
 const router = express.Router();
 
-
-
 router.get(
-  "/available",
-  authMiddleware,
-  driverController.getAvailableDrivers
+    "/available",
+    verifyToken,
+    driverController.getAvailableDrivers
 );
 
 router.get(
-  "/",
-  authMiddleware,
-  driverController.getAllDrivers
+    "/",
+    verifyToken,
+    driverController.getAllDrivers
 );
 
 router.get(
-  "/:id",
-  authMiddleware,
-  driverController.getDriverById
+    "/:id",
+    verifyToken,
+    driverController.getDriverById
 );
 
 router.post(
-  "/",
-  authMiddleware,
-  driverController.createDriver
+    "/",
+    verifyToken,
+    driverController.createDriver
 );
 
 router.patch(
-  "/:id",
-  authMiddleware,
-  driverController.updateDriver
+    "/:id",
+    verifyToken,
+    driverController.updateDriver
 );
 
 router.patch(
-  "/:id/suspend",
-  authMiddleware,
-  driverController.suspendDriver
+    "/:id/suspend",
+    verifyToken,
+    driverController.suspendDriver
 );
 
 router.patch(
-  "/:id/restore",
-  authMiddleware,
-  driverController.restoreDriver
+    "/:id/restore",
+    verifyToken,
+    driverController.restoreDriver
 );
 
 router.delete(
-  "/:id",
-  authMiddleware,
-  driverController.deleteDriver
+    "/:id",
+    verifyToken,
+    driverController.deleteDriver
 );
 
 module.exports = router;
