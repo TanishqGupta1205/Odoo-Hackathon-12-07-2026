@@ -1,0 +1,51 @@
+transitops-backend/
+├── src/
+│   ├── config/
+│   │   └── db.js
+│   ├── constants/
+│   │   ├── roles.constants.js
+│   │   └── status.constants.js
+│   ├── controllers/
+│   │   ├── auth.controller.js
+│   │   ├── vehicle.controller.js
+│   │   ├── driver.controller.js
+│   │   ├── trip.controller.js
+│   │   ├── maintenance.controller.js
+│   │   ├── fuel.controller.js
+│   │   ├── expense.controller.js
+│   │   ├── dashboard.controller.js
+│   │   └── report.controller.js
+│   ├── services/
+│   │   ├── auth.service.js
+│   │   ├── vehicle.service.js
+│   │   ├── driver.service.js
+│   │   ├── trip.service.js
+│   │   ├── maintenance.service.js
+│   │   ├── fuel.service.js
+│   │   ├── expense.service.js
+│   │   ├── analytics.service.js
+│   │   └── report.service.js
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Role.js
+│   │   ├── Vehicle.js
+│   │   ├── Driver.js
+│   │   ├── Trip.js
+│   │   ├── Maintenance.js
+│   │   ├── FuelLog.js
+│   │   └── Expense.js
+│   ├── middlewares/
+│   ├── routes/
+│   ├── validators/
+│   ├── utils/
+│   ├── jobs/
+│   ├── seeds/
+│   ├── docs/
+│   ├── app.js
+│   └── server.js
+├── tests/
+├── .env.example
+├── .gitignore
+├── package.json
+├── README.md
+└── tree.txt
